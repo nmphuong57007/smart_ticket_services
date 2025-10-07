@@ -224,7 +224,9 @@ class UserController extends Controller
             $validator = Validator::make($request->all(), [
                 'fullname' => 'sometimes|required|string|max:100',
                 'email' => 'sometimes|required|email|max:100|unique:users,email,' . $id,
-                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $id
+                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $id,
+                'address' => 'sometimes|nullable|string|max:255',
+                'gender' => 'sometimes|nullable|in:male,female,other'
             ], [
                 'fullname.required' => 'Họ tên không được để trống',
                 'fullname.string' => 'Họ tên phải là chuỗi ký tự',
@@ -235,7 +237,10 @@ class UserController extends Controller
                 'email.unique' => 'Email này đã được sử dụng',
                 'phone.string' => 'Số điện thoại phải là chuỗi ký tự',
                 'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
-                'phone.unique' => 'Số điện thoại này đã được sử dụng'
+                'phone.unique' => 'Số điện thoại này đã được sử dụng',
+                'address.string' => 'Địa chỉ phải là chuỗi ký tự',
+                'address.max' => 'Địa chỉ không được vượt quá 255 ký tự',
+                'gender.in' => 'Giới tính phải là male, female hoặc other'
             ]);
 
             if ($validator->fails()) {
@@ -247,7 +252,7 @@ class UserController extends Controller
             }
 
             // Update user (chỉ cho phép cập nhật thông tin cơ bản)
-            $user->update($request->only(['fullname', 'email', 'phone']));
+            $user->update($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
 
             return response([
                 'success' => true,
@@ -277,7 +282,9 @@ class UserController extends Controller
             $validator = Validator::make($request->all(), [
                 'fullname' => 'sometimes|required|string|max:100',
                 'email' => 'sometimes|required|email|max:100|unique:users,email,' . $user->id,
-                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $user->id
+                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $user->id,
+                'address' => 'sometimes|nullable|string|max:255',
+                'gender' => 'sometimes|nullable|in:male,female,other'
             ], [
                 'fullname.required' => 'Họ tên không được để trống',
                 'fullname.string' => 'Họ tên phải là chuỗi ký tự',
@@ -288,7 +295,10 @@ class UserController extends Controller
                 'email.unique' => 'Email này đã được sử dụng',
                 'phone.string' => 'Số điện thoại phải là chuỗi ký tự',
                 'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
-                'phone.unique' => 'Số điện thoại này đã được sử dụng'
+                'phone.unique' => 'Số điện thoại này đã được sử dụng',
+                'address.string' => 'Địa chỉ phải là chuỗi ký tự',
+                'address.max' => 'Địa chỉ không được vượt quá 255 ký tự',
+                'gender.in' => 'Giới tính phải là male, female hoặc other'
             ]);
 
             if ($validator->fails()) {
@@ -300,7 +310,7 @@ class UserController extends Controller
             }
 
             // Update user profile
-            $user->update($request->only(['fullname', 'email', 'phone']));
+            $user->update($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
 
             return response([
                 'success' => true,
