@@ -19,16 +19,27 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        'https://smart-ticket-client-chi.vercel.app',
+        'http://localhost:3000',
+        'https://localhost:3000', // Support both http and https for localhost
+    ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Accept',
+        'Authorization', 
+        'Content-Type',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+        'X-XSRF-TOKEN',
+    ],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400, // 24 hours cache
 
-    'supports_credentials' => false,
+    'supports_credentials' => true, // Required for authentication cookies
 
 ];
