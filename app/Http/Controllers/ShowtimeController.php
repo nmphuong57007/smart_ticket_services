@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Services\Showtime\ShowtimeService;
+use App\Http\Validator\Showtime\ShowtimeFilterValidator;
 
 class ShowtimeController extends Controller
 {
     protected ShowtimeService $showtimeService;
+    protected ShowtimeFilterValidator $showtimeFilterValidator;
 
-    public function __construct(ShowtimeService $showtimeService)
+    public function __construct(ShowtimeService $showtimeService, ShowtimeFilterValidator $showtimeFilterValidator)
     {
         $this->showtimeService = $showtimeService;
+        $this->showtimeFilterValidator = $showtimeFilterValidator;
     }
 
     /**
@@ -20,27 +23,53 @@ class ShowtimeController extends Controller
      */
     public function index(Request $request)
     {
-        $filters = $request->only([
-            'room_id',
-            'movie_id',
-            'show_date',
-            'from_date',
-            'to_date',
-            'per_page'
-        ]);
+        try {
+            // Validate query parameters
+            $validationResult = $this->showtimeFilterValidator->validateWithStatus($request->query());
+            if (!$validationResult['success']) {
+                return response([
+                    'success' => false,
+                    'message' => 'Dữ liệu không hợp lệ',
+                    'errors' => $validationResult['errors']
+                ], 422);
+            }
 
-        $showtimes = $this->showtimeService->getShowtimes($filters);
+            $filters = [
+                'room_id' => $request->query('room_id'),
+                'movie_id' => $request->query('movie_id'),
+                'show_date' => $request->query('show_date'),
+                'from_date' => $request->query('from_date'),
+                'to_date' => $request->query('to_date'),
+                'sort_by' => $request->query('sort_by', 'show_date'),
+                'sort_order' => $request->query('sort_order', 'asc'),
+                'per_page' => $request->query('per_page', 15)
+            ];
 
-        return response()->json([
-            'success' => true,
-            'data' => $showtimes->items(),
-            'pagination' => [
-                'current_page' => $showtimes->currentPage(),
-                'per_page' => $showtimes->perPage(),
-                'total' => $showtimes->total(),
-                'last_page' => $showtimes->lastPage(),
-            ]
-        ]);
+            $showtimes = $this->showtimeService->getShowtimes($filters);
+
+            return response([
+                'success' => true,
+                'message' => 'Lấy danh sách lịch chiếu thành công',
+                'data' => [
+                    'showtimes' => $showtimes->items(),
+                    'pagination' => [
+                        'current_page' => $showtimes->currentPage(),
+                        'last_page' => $showtimes->lastPage(),
+                        'per_page' => $showtimes->perPage(),
+                        'total' => $showtimes->total(),
+                        'from' => $showtimes->firstItem(),
+                        'to' => $showtimes->lastItem()
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Lấy danh sách lịch chiếu thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -48,12 +77,24 @@ class ShowtimeController extends Controller
      */
     public function showDates(int $roomId)
     {
-        $dates = $this->showtimeService->getShowDatesByRoom($roomId);
+        try {
+            $dates = $this->showtimeService->getShowDatesByRoom($roomId);
 
-        return response()->json([
-            'success' => true,
-            'data' => $dates
-        ]);
+            return response([
+                'success' => true,
+                'message' => 'Lấy danh sách ngày chiếu thành công',
+                'data' => [
+                    'dates' => $dates
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Lấy danh sách ngày chiếu thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -61,12 +102,24 @@ class ShowtimeController extends Controller
      */
     public function rooms()
     {
-        $rooms = $this->showtimeService->getRoomsWithShowtimes();
+        try {
+            $rooms = $this->showtimeService->getRoomsWithShowtimes();
 
-        return response()->json([
-            'success' => true,
-            'data' => $rooms
-        ]);
+            return response([
+                'success' => true,
+                'message' => 'Lấy danh sách phòng chiếu thành công',
+                'data' => [
+                    'rooms' => $rooms
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Lấy danh sách phòng chiếu thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -74,11 +127,23 @@ class ShowtimeController extends Controller
      */
     public function statistics()
     {
-        $stats = $this->showtimeService->getShowtimeStatistics();
+        try {
+            $stats = $this->showtimeService->getShowtimeStatistics();
 
-        return response()->json([
-            'success' => true,
-            'data' => $stats
-        ]);
+            return response([
+                'success' => true,
+                'message' => 'Lấy thống kê lịch chiếu thành công',
+                'data' => [
+                    'statistics' => $stats
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Lấy thống kê lịch chiếu thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

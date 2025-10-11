@@ -14,9 +14,9 @@ class ShowtimeService
     public function getShowtimes(array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
         return Showtime::with([
-                'movie:id,title,poster,release_date',
-                'room:id,name,cinema_id'
-            ])
+            'movie:id,title,poster,release_date',
+            'room:id,name,cinema_id'
+        ])
             ->when($filters['room_id'] ?? null, fn($query, $roomId) => $query->where('room_id', $roomId))
             ->when($filters['movie_id'] ?? null, fn($query, $movieId) => $query->where('movie_id', $movieId))
             ->when($filters['show_date'] ?? null, fn($query, $date) => $query->where('show_date', $date))
