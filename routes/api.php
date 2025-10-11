@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MovieController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
 
@@ -49,4 +50,11 @@ Route::middleware('api.auth')->group(function () {
         Route::post('/add-points', [PointsHistoryController::class, 'addPoints']); // Cộng điểm thủ công (admin)
         Route::get('/history/{id}', [PointsHistoryController::class, 'show']); // Chi tiết giao dịch điểm
     });
+});
+
+
+
+// Movie routes
+Route::prefix('movies')->group(function () {
+    Route::get('/list', [MovieController::class, 'index']);
 });
