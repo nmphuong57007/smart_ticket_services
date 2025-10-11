@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Services\PointsHistory\PointsHistoryService;
 use App\Http\Validator\PointsHistory\PointsHistoryFilterValidator;
 use App\Http\Validator\PointsHistory\AddPointsValidator;
-use App\Models\PointsHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class PointsHistoryController extends Controller
 {

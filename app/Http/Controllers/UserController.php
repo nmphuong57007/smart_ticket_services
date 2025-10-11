@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Services\User\UserService;
 use App\Http\Validator\User\GetUsersValidator;
 use App\Http\Validator\User\UpdateUserValidator;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class UserController extends Controller

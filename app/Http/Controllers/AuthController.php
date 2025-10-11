@@ -6,11 +6,7 @@ use App\Http\Services\Auth\AuthService;
 use App\Http\Validator\Auth\RegisterValidator;
 use App\Http\Validator\Auth\LoginValidator;
 use App\Http\Validator\Auth\RevokeSessionValidator;
-use App\Models\PersonalAccessToken;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
