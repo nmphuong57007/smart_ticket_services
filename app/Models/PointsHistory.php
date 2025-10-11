@@ -77,14 +77,6 @@ class PointsHistory extends Model
     }
 
     /**
-     * Scope để sắp xếp mới nhất trước
-     */
-    public function scopeLatest($query)
-    {
-        return $query->orderBy('created_at', 'desc');
-    }
-
-    /**
      * Accessor để hiển thị loại giao dịch bằng tiếng Việt
      */
     public function getTypeNameAttribute(): string

@@ -45,32 +45,16 @@ class PointsHistoryController extends Controller
             }
 
             $user = $request->user();
-            $query = $user->pointsHistory()->withCreator();
 
-            // Lọc theo loại giao dịch
-            if ($request->type) {
-                $query->byType($request->type);
-            }
-
-            // Lọc theo nguồn
-            if ($request->source) {
-                $query->bySource($request->source);
-            }
-
-            // Lọc theo khoảng thời gian
-            if ($request->from_date) {
-                $query->whereDate('created_at', '>=', $request->from_date);
-            }
-            if ($request->to_date) {
-                $query->whereDate('created_at', '<=', $request->to_date);
-            }
-
-            // Sắp xếp mới nhất trước
-            $query->latest();
-
-            // Phân trang
-            $perPage = $request->per_page ?? 15;
-            $history = $query->paginate($perPage);
+            // Sử dụng các phương thức có sẵn của Eloquent
+            $history = $user->pointsHistory()
+                ->with(['creator:id,fullname,email,role'])
+                ->when($request->type, fn($query, $type) => $query->byType($type))
+                ->when($request->source, fn($query, $source) => $query->bySource($source))
+                ->when($request->from_date, fn($query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate))
+                ->when($request->to_date, fn($query, $toDate) => $query->whereDate('created_at', '<=', $toDate))
+                ->latest()
+                ->paginate($request->per_page ?? 15);
 
             // Thống kê tổng quan
             $statistics = [
@@ -149,33 +133,17 @@ class PointsHistoryController extends Controller
                 ], 422);
             }
 
-            $user = User::find($userId);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'Không tìm thấy người dùng'
-                ], 404);
-            }
+            $user = User::findOrFail($userId);
 
-            $query = $user->pointsHistory()->withCreator();
-
-            // Áp dụng các filter giống như myHistory
-            if ($request->type) {
-                $query->byType($request->type);
-            }
-            if ($request->source) {
-                $query->bySource($request->source);
-            }
-            if ($request->from_date) {
-                $query->whereDate('created_at', '>=', $request->from_date);
-            }
-            if ($request->to_date) {
-                $query->whereDate('created_at', '<=', $request->to_date);
-            }
-
-            $query->latest();
-            $perPage = $request->per_page ?? 15;
-            $history = $query->paginate($perPage);
+            // Sử dụng các phương thức có sẵn của Eloquent
+            $history = $user->pointsHistory()
+                ->with(['creator:id,fullname,email,role'])
+                ->when($request->type, fn($query, $type) => $query->byType($type))
+                ->when($request->source, fn($query, $source) => $query->bySource($source))
+                ->when($request->from_date, fn($query, $fromDate) => $query->whereDate('created_at', '>=', $fromDate))
+                ->when($request->to_date, fn($query, $toDate) => $query->whereDate('created_at', '<=', $toDate))
+                ->latest()
+                ->paginate($request->per_page ?? 15);
 
             $statistics = [
                 'current_balance' => $user->points,
@@ -207,6 +175,11 @@ class PointsHistoryController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -258,8 +231,8 @@ class PointsHistoryController extends Controller
                 ], 422);
             }
 
-            $user = User::find($request->user_id);
-            
+            $user = User::findOrFail($request->user_id);
+
             // Thêm điểm với lịch sử
             $pointsHistory = $user->addPoints(
                 $request->points,
@@ -297,16 +270,8 @@ class PointsHistoryController extends Controller
     public function show(Request $request, $id)
     {
         try {
-            $pointsHistory = PointsHistory::with(['user:id,fullname,email'])
-                ->withCreator()
-                ->find($id);
-
-            if (!$pointsHistory) {
-                return response([
-                    'success' => false,
-                    'message' => 'Không tìm thấy giao dịch điểm'
-                ], 404);
-            }
+            $pointsHistory = PointsHistory::with(['user:id,fullname,email', 'creator:id,fullname,email,role'])
+                ->findOrFail($id);
 
             // Kiểm tra quyền: chỉ được xem giao dịch của mình hoặc admin/staff xem tất cả
             $currentUser = $request->user();
@@ -325,6 +290,11 @@ class PointsHistoryController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy giao dịch điểm'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,

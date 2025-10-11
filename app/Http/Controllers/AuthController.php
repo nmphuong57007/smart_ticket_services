@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -21,8 +22,8 @@ class AuthController extends Controller
         }
 
         $token = substr($authHeader, 7); // Remove "Bearer " prefix
-        $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
-        
+        $accessToken = PersonalAccessToken::findToken($token);
+
         return $accessToken ? $accessToken->id : null;
     }
 
@@ -87,7 +88,7 @@ class AuthController extends Controller
             // Create API token for the user with IP tracking
             $newAccessToken = $user->createToken($request->device_name);
             $token = $newAccessToken->plainTextToken;
-            
+
             // Update token with IP address and user agent
             $newAccessToken->accessToken->update([
                 'ip_address' => $request->ip(),
@@ -174,7 +175,7 @@ class AuthController extends Controller
             // Create API token with IP tracking
             $newAccessToken = $user->createToken($request->device_name);
             $token = $newAccessToken->plainTextToken;
-            
+
             // Update token with IP address and user agent
             $newAccessToken->accessToken->update([
                 'ip_address' => $request->ip(),
@@ -233,9 +234,9 @@ class AuthController extends Controller
             }
 
             $token = substr($authHeader, 7); // Remove "Bearer " prefix
-            
+
             // Find and delete the current token
-            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            $accessToken = PersonalAccessToken::findToken($token);
             if ($accessToken) {
                 $accessToken->delete();
             }
@@ -302,19 +303,17 @@ class AuthController extends Controller
             $currentTokenId = $this->getCurrentTokenId($request);
 
             // Get tokens sorted by ID desc (newest first)
-            $sortedTokens = $user->tokens()->orderBy('id', 'desc')->get();
-            $sessions = $sortedTokens->map(function($token) use ($currentTokenId) {
-                return [
-                    'id' => $token->id,
-                    'device_name' => $token->name,
-                    'ip_address' => $token->ip_address,
-                    'user_agent' => $token->user_agent,
-                    'device_info' => $token->device_info,
-                    'created_at' => $token->created_at,
-                    'last_used_at' => $token->last_used_at,
-                    'is_current' => $token->id === $currentTokenId
-                ];
-            });
+            $sortedTokens = $user->tokens()->latest('id')->get();
+            $sessions = $sortedTokens->map(fn($token) => [
+                'id' => $token->id,
+                'device_name' => $token->name,
+                'ip_address' => $token->ip_address,
+                'user_agent' => $token->user_agent,
+                'device_info' => $token->device_info,
+                'created_at' => $token->created_at,
+                'last_used_at' => $token->last_used_at,
+                'is_current' => $token->id === $currentTokenId
+            ]);
 
             return response([
                 'success' => true,
@@ -357,7 +356,7 @@ class AuthController extends Controller
 
             $user = $request->user();
             $currentTokenId = $this->getCurrentTokenId($request);
-            
+
             // Don't allow revoking current token
             if ($request->token_id == $currentTokenId) {
                 return response([
@@ -396,7 +395,7 @@ class AuthController extends Controller
     {
         try {
             $currentTokenId = $this->getCurrentTokenId($request);
-            
+
             // Revoke all tokens except current
             $deleted = $request->user()->tokens()->where('id', '!=', $currentTokenId)->delete();
 

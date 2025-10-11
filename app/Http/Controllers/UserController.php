@@ -52,37 +52,28 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Query builder
-            $query = User::query();
-
-            // Search filter
-            if ($request->search) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
+            // Sử dụng các phương thức có sẵn của Eloquent
+            $users = User::latest('id')
+                ->when($request->search, fn($query, $search) => $query->where(function ($q) use ($search) {
                     $q->where('fullname', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
-                });
-            }
-
-            // Role filter
-            if ($request->role) {
-                $query->where('role', $request->role);
-            }
-
-            // Status filter
-            if ($request->status) {
-                $query->where('status', $request->status);
-            }
-
-            // Sorting - Default: ID từ lớn đến bé (mới nhất trước)
-            $sortBy = $request->sort_by ?? 'id';
-            $sortOrder = $request->sort_order ?? 'desc';
-            $query->orderBy($sortBy, $sortOrder);
-
-            // Pagination
-            $perPage = $request->per_page ?? 15;
-            $users = $query->paginate($perPage);
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
+                }))
+                ->when($request->role, fn($query, $role) => $query->where('role', $role))
+                ->when($request->status, fn($query, $status) => $query->where('status', $status))
+                ->when($request->sort_by, function ($query, $sortBy) use ($request) {
+                    $sortOrder = $request->sort_order ?? 'desc';
+                    
+                    // Sử dụng latest/oldest khi có thể cho consistency
+                    if (in_array($sortBy, ['id', 'created_at', 'updated_at']) && $sortOrder === 'desc') {
+                        return $query->latest($sortBy);
+                    } elseif (in_array($sortBy, ['id', 'created_at', 'updated_at']) && $sortOrder === 'asc') {
+                        return $query->oldest($sortBy);
+                    }
+                    
+                    return $query->orderBy($sortBy, $sortOrder);
+                })
+                ->paginate($request->per_page ?? 15);
 
             return response([
                 'success' => true,
@@ -133,12 +124,12 @@ class UserController extends Controller
                     'admins' => User::where('role', 'admin')->count()
                 ],
                 'recent_registrations' => [
-                    'today' => User::whereDate('created_at', today())->count(),
+                    'today' => User::whereDate('created_at', now()->toDateString())->count(),
                     'this_week' => User::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-                    'this_month' => User::whereMonth('created_at', now()->month)->count()
+                    'this_month' => User::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count()
                 ],
                 'top_customers_by_points' => User::where('role', 'customer')
-                    ->orderBy('points', 'desc')
+                    ->latest('points')
                     ->limit(5)
                     ->select('id', 'fullname', 'email', 'points')
                     ->get()
@@ -173,14 +164,7 @@ class UserController extends Controller
                 ], 403);
             }
 
-            $user = User::find($id);
-
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = User::findOrFail($id);
 
             return response([
                 'success' => true,
@@ -190,6 +174,11 @@ class UserController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -213,13 +202,7 @@ class UserController extends Controller
                 ], 403);
             }
 
-            $user = User::find($id);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'Không tìm thấy người dùng'
-                ], 404);
-            }
+            $user = User::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
                 'fullname' => 'sometimes|required|string|max:100',
@@ -262,6 +245,11 @@ class UserController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -343,13 +331,7 @@ class UserController extends Controller
                 ], 403);
             }
 
-            $user = User::find($id);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = User::findOrFail($id);
 
             // Cannot block yourself
             if ($user->id === $request->user()->id) {
@@ -376,6 +358,11 @@ class UserController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -399,13 +386,7 @@ class UserController extends Controller
                 ], 403);
             }
 
-            $user = User::find($id);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = User::findOrFail($id);
 
             // Cannot delete yourself
             if ($user->id === $request->user()->id) {
@@ -417,7 +398,7 @@ class UserController extends Controller
 
             // Revoke all tokens before deletion
             $user->tokens()->delete();
-            
+
             // Delete user
             $user->delete();
 
@@ -426,6 +407,11 @@ class UserController extends Controller
                 'message' => 'Xóa người dùng thành công'
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
