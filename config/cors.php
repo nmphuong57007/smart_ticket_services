@@ -22,14 +22,15 @@ return [
     'allowed_origins' => [
         'https://smart-ticket-client-chi.vercel.app',
         'http://localhost:3000',
-        'https://localhost:3000', // Support both http and https for localhost
+        'http://localhost:5173',
+        'https://smart-ticket-admin.vercel.app'
     ],
 
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => [
         'Accept',
-        'Authorization', 
+        'Authorization',
         'Content-Type',
         'X-Requested-With',
         'X-CSRF-TOKEN',

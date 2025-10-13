@@ -106,6 +106,7 @@ class AuthService
             'user' => [
                 'id' => $user->id,
                 'fullname' => $user->fullname,
+                'avatar' => $user->avatar,
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'address' => $user->address,
