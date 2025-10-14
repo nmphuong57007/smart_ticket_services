@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -12,6 +14,8 @@ use App\Http\Controllers\PointsHistoryController;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
     Route::post('/login', [AuthController::class, 'login'])->name('login');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
 });
 
 // Protected routes (authentication required)
@@ -57,4 +61,8 @@ Route::middleware('api.auth')->group(function () {
 // Movie routes
 Route::prefix('movies')->group(function () {
     Route::get('/list', [MovieController::class, 'index']);
+});
+
+Route::post('/auth/test', function (\Illuminate\Http\Request $r) {
+    return response()->json(['ok' => true, 'method' => $r->method(), 'body' => $r->all()]);
 });
