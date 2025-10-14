@@ -16,6 +16,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
+    Route::post('/change-password', [UserController::class, 'changePassword']);
 });
 
 // Protected routes (authentication required)
@@ -23,6 +24,9 @@ Route::middleware('api.auth')->group(function () {
     // User profile routes
     Route::get('/user', function (Request $request) {
         return $request->user();
+    });
+    Route::prefix('auth')->group(function () {
+        Route::post('/change-password', [UserController::class, 'changePassword']);
     });
 
     Route::prefix('auth')->group(function () {

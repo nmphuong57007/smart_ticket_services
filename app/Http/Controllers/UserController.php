@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
@@ -58,10 +60,10 @@ class UserController extends Controller
             // Search filter
             if ($request->search) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('fullname', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%");
                 });
             }
 
@@ -99,7 +101,6 @@ class UserController extends Controller
                     ]
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -149,7 +150,6 @@ class UserController extends Controller
                 'message' => 'Lấy thống kê người dùng thành công',
                 'data' => $stats
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -189,7 +189,6 @@ class UserController extends Controller
                     'user' => $user
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -261,7 +260,6 @@ class UserController extends Controller
                     'user' => $user->fresh()
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -319,7 +317,6 @@ class UserController extends Controller
                     'user' => $user->fresh()
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -375,7 +372,6 @@ class UserController extends Controller
                     'user' => $user->fresh()
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -417,7 +413,7 @@ class UserController extends Controller
 
             // Revoke all tokens before deletion
             $user->tokens()->delete();
-            
+
             // Delete user
             $user->delete();
 
@@ -425,7 +421,6 @@ class UserController extends Controller
                 'success' => true,
                 'message' => 'Xóa người dùng thành công'
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -433,5 +428,44 @@ class UserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Cho phép người dùng đã đăng nhập thay đổi mật khẩu của chính họ.
+     */
+    public function changePassword(Request $request)
+    {
+        // 1. Validation
+        $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|confirmed|min:8',
+        ]);
+
+        // Lấy người dùng hiện tại đang đăng nhập
+        $user = $request->user();
+
+        // 2. Xác thực Mật khẩu Cũ (Quan trọng nhất)
+        // Kiểm tra xem mật khẩu hiện tại có khớp với mật khẩu người dùng đang dùng không
+        if (!Hash::check($request->current_password, $user->password)) {
+            // Throw ValidationException để trả về lỗi 422 JSON
+            throw ValidationException::withMessages([
+                'current_password' => ['Mật khẩu hiện tại không chính xác.'],
+            ]);
+        }
+
+        // 3. Cập nhật Mật khẩu Mới
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Tùy chọn: Hủy bỏ tất cả các token khác (để yêu cầu đăng nhập lại)
+        // if ($user->tokens()) {
+        //     $user->tokens()->where('id', '!=', $request->bearerToken())->delete();
+        // }
+
+
+        // 4. Trả về phản hồi thành công
+        return response()->json([
+            'message' => 'Mật khẩu đã được thay đổi thành công.',
+        ], 200);
     }
 }
