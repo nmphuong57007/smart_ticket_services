@@ -59,6 +59,7 @@ Route::middleware('api.auth')->group(function () {
 // Movie routes
 Route::prefix('movies')->group(function () {
     Route::get('/list', [MovieController::class, 'index']);
+    Route::get('/{id}', [MovieController::class, 'show']);
 });
 
 
