@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Models\Cinema;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use App\Models\Cinema;
 
 class CinemaFactory extends Factory
 {
@@ -12,8 +12,9 @@ class CinemaFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Cinema ' . $this->faker->unique()->numberBetween(1, 10),
-            'address' => $this->faker->address,
+            'name' => 'Rạp ' . $this->faker->company(),
+            'address' => $this->faker->address(),
+            'phone' => $this->faker->phoneNumber(),
         ];
     }
 }
