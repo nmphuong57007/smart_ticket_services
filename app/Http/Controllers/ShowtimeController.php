@@ -11,16 +11,16 @@ class ShowtimeController extends Controller
     protected ShowtimeService $showtimeService;
     protected ShowtimeFilterValidator $showtimeFilterValidator;
 
-    public function __construct(
-        ShowtimeService $showtimeService,
-        ShowtimeFilterValidator $showtimeFilterValidator
-    ) {
+    public function __construct(ShowtimeService $showtimeService, ShowtimeFilterValidator $showtimeFilterValidator)
+    {
+
         $this->showtimeService = $showtimeService;
         $this->showtimeFilterValidator = $showtimeFilterValidator;
     }
 
     /**
-     * Lấy danh sách lịch chiếu (lọc theo rạp, phòng, phim, ngày...)
+     * Lấy danh sách lịch chiếu
+     * Có filter theo phòng, phim, ngày và phân trang
      */
     public function index(Request $request)
     {
@@ -35,22 +35,19 @@ class ShowtimeController extends Controller
                 ], 422);
             }
 
-            // Gom filters
             $filters = [
-                'cinema_id'  => $request->query('cinema_id'),
-                'room_id'    => $request->query('room_id'),
-                'movie_id'   => $request->query('movie_id'),
-                'show_date'  => $request->query('show_date'),
-                'from_date'  => $request->query('from_date'),
-                'to_date'    => $request->query('to_date'),
-                'sort_by'    => $request->query('sort_by', 'show_date'),
+                'room_id' => $request->query('room_id'),
+                'movie_id' => $request->query('movie_id'),
+                'show_date' => $request->query('show_date'),
+                'from_date' => $request->query('from_date'),
+                'to_date' => $request->query('to_date'),
+                'sort_by' => $request->query('sort_by', 'show_date'),
                 'sort_order' => $request->query('sort_order', 'asc'),
-                'per_page'   => $request->query('per_page', 15)
+                'per_page' => $request->query('per_page', 15)
             ];
 
             $showtimes = $this->showtimeService->getShowtimes($filters);
 
-            // Trả về dữ liệu có phân trang
             return response([
                 'success' => true,
                 'message' => 'Lấy danh sách lịch chiếu thành công',
@@ -87,7 +84,9 @@ class ShowtimeController extends Controller
             return response([
                 'success' => true,
                 'message' => 'Lấy danh sách ngày chiếu thành công',
-                'data' => ['dates' => $dates]
+                'data' => [
+                    'dates' => $dates
+                ]
             ], 200);
 
         } catch (\Exception $e) {
@@ -110,7 +109,9 @@ class ShowtimeController extends Controller
             return response([
                 'success' => true,
                 'message' => 'Lấy danh sách phòng chiếu thành công',
-                'data' => ['rooms' => $rooms]
+                'data' => [
+                    'rooms' => $rooms
+                ]
             ], 200);
 
         } catch (\Exception $e) {
@@ -123,7 +124,8 @@ class ShowtimeController extends Controller
     }
 
     /**
-     * Lấy thống kê lịch chiếu
+     * Lấy thống kê showtime
+
      */
     public function statistics()
     {
@@ -133,7 +135,9 @@ class ShowtimeController extends Controller
             return response([
                 'success' => true,
                 'message' => 'Lấy thống kê lịch chiếu thành công',
-                'data' => ['statistics' => $stats]
+                'data' => [
+                    'statistics' => $stats
+                ]
             ], 200);
 
         } catch (\Exception $e) {

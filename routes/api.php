@@ -9,7 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
 
 use App\Http\Controllers\ShowtimeController;
-use App\Http\Controllers\CinemaController;
+
 
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
@@ -60,6 +60,15 @@ Route::middleware('api.auth')->group(function () {
 // Movie routes
 Route::prefix('movies')->group(function () {
     Route::get('/list', [MovieController::class, 'index']);
+    Route::get('/{id}', [MovieController::class, 'show']);
+});
+
+
+// Showtime routes - group prefix & middleware
+Route::prefix('showtimes')->group(function () {
+    Route::get('/', [ShowtimeController::class, 'index']);                   // Lấy danh sách lịch chiếu với filter & pagination
+    Route::get('/rooms', [ShowtimeController::class, 'rooms']);              // Lấy tất cả phòng có lịch chiếu
+    Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
 });
 
 

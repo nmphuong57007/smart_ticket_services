@@ -7,7 +7,9 @@ use App\Models\Showtime;
 class ShowtimeService
 {
     /**
-     * Lấy lịch chiếu (lọc theo rạp, phòng, phim, ngày)
+     * Lấy lịch chiếu theo rạp/ngày, có thể filter theo phim
+     *
+     * @param array $filters ['room_id', 'movie_id', 'show_date', 'from_date', 'to_date', 'per_page']
      */
     public function getShowtimes(array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
     {
@@ -15,26 +17,20 @@ class ShowtimeService
             'movie:id,title,poster,release_date',
             'room:id,name,cinema_id'
         ])
-            // ✅ Lọc theo rạp (cinema_id)
-            ->when($filters['cinema_id'] ?? null, function ($query, $cinemaId) {
-                $query->whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId));
-            })
-            // Lọc theo phòng
             ->when($filters['room_id'] ?? null, fn($query, $roomId) => $query->where('room_id', $roomId))
-            // Lọc theo phim
             ->when($filters['movie_id'] ?? null, fn($query, $movieId) => $query->where('movie_id', $movieId))
-            // Lọc theo ngày chiếu
             ->when($filters['show_date'] ?? null, fn($query, $date) => $query->where('show_date', $date))
-            // Lọc theo khoảng ngày
             ->when($filters['from_date'] ?? null, fn($query, $fromDate) => $query->whereDate('show_date', '>=', $fromDate))
             ->when($filters['to_date'] ?? null, fn($query, $toDate) => $query->whereDate('show_date', '<=', $toDate))
-            ->orderBy($filters['sort_by'] ?? 'show_date', $filters['sort_order'] ?? 'asc')
             ->orderBy('show_time', 'asc')
             ->paginate($filters['per_page'] ?? 10);
     }
 
     /**
      * Lấy tất cả các ngày chiếu của một phòng
+     *
+     * @param int $roomId
+     * @return array
      */
     public function getShowDatesByRoom(int $roomId): array
     {
@@ -47,20 +43,9 @@ class ShowtimeService
     }
 
     /**
-     * ✅ Lấy tất cả các ngày chiếu của một rạp (tổng hợp từ các phòng)
-     */
-    public function getShowDatesByCinema(int $cinemaId): array
-    {
-        return Showtime::whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId))
-            ->select('show_date')
-            ->distinct()
-            ->orderBy('show_date', 'asc')
-            ->pluck('show_date')
-            ->toArray();
-    }
-
-    /**
      * Lấy tất cả phòng có lịch chiếu
+     *
+     * @return array
      */
     public function getRoomsWithShowtimes(): array
     {
@@ -77,6 +62,8 @@ class ShowtimeService
 
     /**
      * Thống kê lịch chiếu theo phim / phòng / ngày
+     *
+     * @return array
      */
     public function getShowtimeStatistics(): array
     {

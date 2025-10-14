@@ -115,4 +115,9 @@ class MovieService
                 ->get()
         ];
     }
+
+    public function getMovieById(int $id): ?Movie
+    {
+        return Movie::find($id);
+    }
 }
