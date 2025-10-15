@@ -31,10 +31,10 @@ class MovieFactory extends Factory
             'title' => $this->faker->sentence(3),
 
             // Cột 'poster' (URL hình ảnh giả)
-            'poster' => $this->faker->imageUrl(640, 480, 'movies'),
+            'poster' => 'https://picsum.photos/200/300?random=' . $this->faker->unique()->numberBetween(1, 10000),
 
             // Cột 'trailer' (URL Youtube giả)
-            'trailer' => 'https://www.youtube.com/watch?v=' . Str::random(11),
+            'trailer' => 'https://www.youtube.com/watch?v=YDsEMotFimg&list=RDYDsEMotFimg&start_radio=1',
 
             // Cột 'description' (Đoạn văn dài)
             'description' => $this->faker->paragraph(4),
@@ -52,7 +52,7 @@ class MovieFactory extends Factory
             'release_date' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
 
             // Cột 'status' (Trạng thái ngẫu nhiên: 1 cho Đang chiếu, 0 cho Sắp chiếu/Đã kết thúc)
-            'status' => $this->faker->randomElement($validStatuses), // 80% là true (Đang chiếu)
+            'status' => $this->faker->randomElement($validStatuses),
 
             // created_at & updated_at được xử lý tự động
             'created_at' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d H:i:s')

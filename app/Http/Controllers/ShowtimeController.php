@@ -13,6 +13,7 @@ class ShowtimeController extends Controller
 
     public function __construct(ShowtimeService $showtimeService, ShowtimeFilterValidator $showtimeFilterValidator)
     {
+
         $this->showtimeService = $showtimeService;
         $this->showtimeFilterValidator = $showtimeFilterValidator;
     }
@@ -124,6 +125,7 @@ class ShowtimeController extends Controller
 
     /**
      * Lấy thống kê showtime
+
      */
     public function statistics()
     {
