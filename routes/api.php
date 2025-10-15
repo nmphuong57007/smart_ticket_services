@@ -10,7 +10,7 @@ use App\Http\Controllers\PointsHistoryController;
 
 use App\Http\Controllers\ShowtimeController;
 
-
+use App\Http\Controllers\CinemaController;
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
