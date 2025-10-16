@@ -2,12 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Http\Services\User\UserService;
+use App\Http\Validator\User\GetUsersValidator;
+use App\Http\Validator\User\UpdateUserValidator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
+    protected UserService $userService;
+    protected GetUsersValidator $getUsersValidator;
+    protected UpdateUserValidator $updateUserValidator;
+
+    public function __construct(
+        UserService $userService,
+        GetUsersValidator $getUsersValidator,
+        UpdateUserValidator $updateUserValidator
+    ) {
+        $this->userService = $userService;
+        $this->getUsersValidator = $getUsersValidator;
+        $this->updateUserValidator = $updateUserValidator;
+    }
+
     /**
      * Get all users with pagination and filtering
      */
@@ -15,74 +30,24 @@ class UserController extends Controller
     {
         try {
             // Check if user has admin or staff role
-            if (!in_array($request->user()->role, ['admin', 'staff'])) {
+            if (!$this->userService->hasPermission($request->user(), 'view_users')) {
                 return response([
                     'success' => false,
                     'message' => 'Không có quyền truy cập. Chỉ quản trị viên và nhân viên mới có thể xem danh sách người dùng.'
                 ], 403);
             }
 
-            $validator = Validator::make($request->all(), [
-                'page' => 'nullable|integer|min:1',
-                'per_page' => 'nullable|integer|min:1|max:100',
-                'search' => 'nullable|string|max:255',
-                'role' => 'nullable|in:customer,staff,admin',
-                'status' => 'nullable|in:active,blocked',
-                'sort_by' => 'nullable|in:id,fullname,email,created_at,points',
-                'sort_order' => 'nullable|in:asc,desc'
-            ], [
-                'page.integer' => 'Số trang phải là số nguyên',
-                'page.min' => 'Số trang phải lớn hơn 0',
-                'per_page.integer' => 'Số bản ghi mỗi trang phải là số nguyên',
-                'per_page.min' => 'Số bản ghi mỗi trang phải lớn hơn 0',
-                'per_page.max' => 'Số bản ghi mỗi trang không được vượt quá 100',
-                'search.string' => 'Từ khóa tìm kiếm phải là chuỗi ký tự',
-                'search.max' => 'Từ khóa tìm kiếm không được vượt quá 255 ký tự',
-                'role.in' => 'Vai trò phải là một trong: customer, staff, admin',
-                'status.in' => 'Trạng thái phải là một trong: active, blocked',
-                'sort_by.in' => 'Trường sắp xếp phải là một trong: id, fullname, email, created_at, points',
-                'sort_order.in' => 'Hướng sắp xếp phải là asc hoặc desc'
-            ]);
-
-            if ($validator->fails()) {
+            $validationResult = $this->getUsersValidator->validateWithStatus($request->all());
+            if (!$validationResult['success']) {
                 return response([
                     'success' => false,
                     'message' => 'Dữ liệu không hợp lệ',
-                    'errors' => $validator->errors()
+                    'errors' => $validationResult['errors']
                 ], 422);
             }
 
-            // Query builder
-            $query = User::query();
-
-            // Search filter
-            if ($request->search) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('fullname', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%");
-                });
-            }
-
-            // Role filter
-            if ($request->role) {
-                $query->where('role', $request->role);
-            }
-
-            // Status filter
-            if ($request->status) {
-                $query->where('status', $request->status);
-            }
-
-            // Sorting - Default: ID từ lớn đến bé (mới nhất trước)
-            $sortBy = $request->sort_by ?? 'id';
-            $sortOrder = $request->sort_order ?? 'desc';
-            $query->orderBy($sortBy, $sortOrder);
-
-            // Pagination
-            $perPage = $request->per_page ?? 15;
-            $users = $query->paginate($perPage);
+            $filters = $request->only(['search', 'role', 'status', 'sort_by', 'sort_order', 'per_page']);
+            $users = $this->userService->getUsers($filters);
 
             return response([
                 'success' => true,
@@ -116,33 +81,14 @@ class UserController extends Controller
     {
         try {
             // Check if user has admin or staff role
-            if (!in_array($request->user()->role, ['admin', 'staff'])) {
+            if (!$this->userService->hasPermission($request->user(), 'view_statistics')) {
                 return response([
                     'success' => false,
                     'message' => 'Không có quyền truy cập. Chỉ quản trị viên và nhân viên mới có thể xem thống kê.'
                 ], 403);
             }
 
-            $stats = [
-                'total_users' => User::count(),
-                'active_users' => User::where('status', 'active')->count(),
-                'blocked_users' => User::where('status', 'blocked')->count(),
-                'users_by_role' => [
-                    'customers' => User::where('role', 'customer')->count(),
-                    'staff' => User::where('role', 'staff')->count(),
-                    'admins' => User::where('role', 'admin')->count()
-                ],
-                'recent_registrations' => [
-                    'today' => User::whereDate('created_at', today())->count(),
-                    'this_week' => User::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-                    'this_month' => User::whereMonth('created_at', now()->month)->count()
-                ],
-                'top_customers_by_points' => User::where('role', 'customer')
-                    ->orderBy('points', 'desc')
-                    ->limit(5)
-                    ->select('id', 'fullname', 'email', 'points')
-                    ->get()
-            ];
+            $stats = $this->userService->getUserStatistics();
 
             return response([
                 'success' => true,
@@ -166,21 +112,14 @@ class UserController extends Controller
     {
         try {
             // Check if user has admin or staff role
-            if (!in_array($request->user()->role, ['admin', 'staff'])) {
+            if (!$this->userService->hasPermission($request->user(), 'view_user_details')) {
                 return response([
                     'success' => false,
                     'message' => 'Không có quyền truy cập. Chỉ quản trị viên và nhân viên mới có thể xem thông tin người dùng.'
                 ], 403);
             }
 
-            $user = User::find($id);
-
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
+            $user = $this->userService->findUserById($id);
 
             return response([
                 'success' => true,
@@ -190,6 +129,11 @@ class UserController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -206,62 +150,40 @@ class UserController extends Controller
     {
         try {
             // Check if user has admin role
-            if ($request->user()->role !== 'admin') {
+            if (!$this->userService->hasPermission($request->user(), 'update_user')) {
                 return response([
                     'success' => false,
                     'message' => 'Không có quyền truy cập. Chỉ quản trị viên mới có thể cập nhật thông tin người dùng.'
                 ], 403);
             }
 
-            $user = User::find($id);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'Không tìm thấy người dùng'
-                ], 404);
-            }
+            $user = $this->userService->findUserById($id);
 
-            $validator = Validator::make($request->all(), [
-                'fullname' => 'sometimes|required|string|max:100',
-                'email' => 'sometimes|required|email|max:100|unique:users,email,' . $id,
-                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $id,
-                'address' => 'sometimes|nullable|string|max:255',
-                'gender' => 'sometimes|nullable|in:male,female,other'
-            ], [
-                'fullname.required' => 'Họ tên không được để trống',
-                'fullname.string' => 'Họ tên phải là chuỗi ký tự',
-                'fullname.max' => 'Họ tên không được vượt quá 100 ký tự',
-                'email.required' => 'Email không được để trống',
-                'email.email' => 'Email không đúng định dạng',
-                'email.max' => 'Email không được vượt quá 100 ký tự',
-                'email.unique' => 'Email này đã được sử dụng',
-                'phone.string' => 'Số điện thoại phải là chuỗi ký tự',
-                'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
-                'phone.unique' => 'Số điện thoại này đã được sử dụng',
-                'address.string' => 'Địa chỉ phải là chuỗi ký tự',
-                'address.max' => 'Địa chỉ không được vượt quá 255 ký tự',
-                'gender.in' => 'Giới tính phải là male, female hoặc other'
-            ]);
-
-            if ($validator->fails()) {
+            $validationResult = $this->updateUserValidator->setUserId($id)->validateWithStatus($request->all());
+            if (!$validationResult['success']) {
                 return response([
                     'success' => false,
                     'message' => 'Dữ liệu không hợp lệ',
-                    'errors' => $validator->errors()
+                    'errors' => $validationResult['errors']
                 ], 422);
             }
 
             // Update user (chỉ cho phép cập nhật thông tin cơ bản)
-            $user->update($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            $updatedUser = $this->userService->updateUser($user, $request->only(['fullname', 'email', 'phone', 'address', 'gender']));
 
             return response([
                 'success' => true,
                 'message' => 'Cập nhật người dùng thành công',
                 'data' => [
-                    'user' => $user->fresh()
+                    'user' => $updatedUser
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -279,44 +201,23 @@ class UserController extends Controller
         try {
             $user = $request->user();
 
-            $validator = Validator::make($request->all(), [
-                'fullname' => 'sometimes|required|string|max:100',
-                'email' => 'sometimes|required|email|max:100|unique:users,email,' . $user->id,
-                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $user->id,
-                'address' => 'sometimes|nullable|string|max:255',
-                'gender' => 'sometimes|nullable|in:male,female,other'
-            ], [
-                'fullname.required' => 'Họ tên không được để trống',
-                'fullname.string' => 'Họ tên phải là chuỗi ký tự',
-                'fullname.max' => 'Họ tên không được vượt quá 100 ký tự',
-                'email.required' => 'Email không được để trống',
-                'email.email' => 'Email không đúng định dạng',
-                'email.max' => 'Email không được vượt quá 100 ký tự',
-                'email.unique' => 'Email này đã được sử dụng',
-                'phone.string' => 'Số điện thoại phải là chuỗi ký tự',
-                'phone.max' => 'Số điện thoại không được vượt quá 20 ký tự',
-                'phone.unique' => 'Số điện thoại này đã được sử dụng',
-                'address.string' => 'Địa chỉ phải là chuỗi ký tự',
-                'address.max' => 'Địa chỉ không được vượt quá 255 ký tự',
-                'gender.in' => 'Giới tính phải là male, female hoặc other'
-            ]);
-
-            if ($validator->fails()) {
+            $validationResult = $this->updateUserValidator->setUserId($user->id)->validateWithStatus($request->all());
+            if (!$validationResult['success']) {
                 return response([
                     'success' => false,
                     'message' => 'Dữ liệu không hợp lệ',
-                    'errors' => $validator->errors()
+                    'errors' => $validationResult['errors']
                 ], 422);
             }
 
             // Update user profile
-            $user->update($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            $updatedUser = $this->userService->updateUser($user, $request->only(['fullname', 'email', 'phone', 'address', 'gender']));
 
             return response([
                 'success' => true,
                 'message' => 'Cập nhật thông tin cá nhân thành công',
                 'data' => [
-                    'user' => $user->fresh()
+                    'user' => $updatedUser
                 ]
             ], 200);
 
@@ -335,47 +236,40 @@ class UserController extends Controller
     public function toggleStatus(Request $request, $id)
     {
         try {
-            // Check if user has admin role
-            if ($request->user()->role !== 'admin') {
+            $targetUser = $this->userService->findUserById($id);
+
+            // Check permission
+            if (!$this->userService->hasPermission($request->user(), 'toggle_user_status', $targetUser)) {
                 return response([
                     'success' => false,
                     'message' => 'Không có quyền truy cập. Chỉ quản trị viên mới có thể khóa/mở khóa tài khoản.'
                 ], 403);
             }
 
-            $user = User::find($id);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
-
             // Cannot block yourself
-            if ($user->id === $request->user()->id) {
+            if ($targetUser->id === $request->user()->id) {
                 return response([
                     'success' => false,
                     'message' => 'Bạn không thể khóa tài khoản của chính mình'
                 ], 400);
             }
 
-            // Toggle status
-            $newStatus = $user->status === 'active' ? 'blocked' : 'active';
-            $user->update(['status' => $newStatus]);
-
-            // Revoke all tokens if blocking user
-            if ($newStatus === 'blocked') {
-                $user->tokens()->delete();
-            }
+            $updatedUser = $this->userService->toggleUserStatus($targetUser);
+            $newStatus = $updatedUser->status;
 
             return response([
                 'success' => true,
                 'message' => $newStatus === 'active' ? 'Mở khóa tài khoản thành công' : 'Khóa tài khoản thành công',
                 'data' => [
-                    'user' => $user->fresh()
+                    'user' => $updatedUser
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -391,41 +285,36 @@ class UserController extends Controller
     public function destroy(Request $request, $id)
     {
         try {
-            // Check if user has admin role
-            if ($request->user()->role !== 'admin') {
+            $targetUser = $this->userService->findUserById($id);
+
+            // Check permission
+            if (!$this->userService->hasPermission($request->user(), 'delete_user', $targetUser)) {
                 return response([
                     'success' => false,
                     'message' => 'Không có quyền truy cập. Chỉ quản trị viên mới có thể xóa người dùng.'
                 ], 403);
             }
 
-            $user = User::find($id);
-            if (!$user) {
-                return response([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
-
             // Cannot delete yourself
-            if ($user->id === $request->user()->id) {
+            if ($targetUser->id === $request->user()->id) {
                 return response([
                     'success' => false,
                     'message' => 'Bạn không thể xóa tài khoản của chính mình'
                 ], 400);
             }
 
-            // Revoke all tokens before deletion
-            $user->tokens()->delete();
-            
-            // Delete user
-            $user->delete();
+            $this->userService->deleteUser($targetUser);
 
             return response([
                 'success' => true,
                 'message' => 'Xóa người dùng thành công'
             ], 200);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy người dùng'
+            ], 404);
         } catch (\Exception $e) {
             return response([
                 'success' => false,

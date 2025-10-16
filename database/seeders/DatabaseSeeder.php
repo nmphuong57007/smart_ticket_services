@@ -14,9 +14,19 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+
             AdminUserSeeder::class,
             PointsHistorySeeder::class,
             MoviesSeeder::class,
+
+            AdminUserSeeder::class,  // tạo user trước
+            CinemasSeeder::class,      // tạo cinema trước rooms
+            RoomsSeeder::class,      // tạo phòng trước
+            MoviesSeeder::class,     // tạo phim trước
+            ShowtimesSeeder::class,  // tạo lịch chiếu sau khi có phòng & phim
+            PointsHistorySeeder::class, // tạo lịch sử điểm
+
+
         ]);
     }
 }
