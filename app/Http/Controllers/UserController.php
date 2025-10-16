@@ -6,6 +6,10 @@ use App\Http\Services\User\UserService;
 use App\Http\Validator\User\GetUsersValidator;
 use App\Http\Validator\User\UpdateUserValidator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -64,7 +68,6 @@ class UserController extends Controller
                     ]
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -95,7 +98,6 @@ class UserController extends Controller
                 'message' => 'Lấy thống kê người dùng thành công',
                 'data' => $stats
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -128,7 +130,6 @@ class UserController extends Controller
                     'user' => $user
                 ]
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response([
                 'success' => false,
@@ -178,7 +179,6 @@ class UserController extends Controller
                     'user' => $updatedUser
                 ]
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response([
                 'success' => false,
@@ -195,32 +195,58 @@ class UserController extends Controller
 
     /**
      * Update current user's profile
-     */
-    public function updateProfile(Request $request)
+     */ public function updateProfile(Request $request)
     {
         try {
             $user = $request->user();
 
-            $validationResult = $this->updateUserValidator->setUserId($user->id)->validateWithStatus($request->all());
-            if (!$validationResult['success']) {
+            $validator = Validator::make($request->all(), [
+                'fullname' => 'sometimes|required|string|max:100',
+                'email' => 'sometimes|required|email|max:100|unique:users,email,' . $user->id,
+                'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $user->id,
+                'address' => 'sometimes|nullable|string|max:255',
+                'gender' => 'sometimes|nullable|in:male,female,other',
+                'avatar' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,gif|max:2048', // 👈 thêm dòng này
+            ], [
+                'avatar.image' => 'Tệp tải lên phải là hình ảnh',
+                'avatar.mimes' => 'Ảnh đại diện chỉ chấp nhận định dạng: jpg, jpeg, png, gif',
+                'avatar.max' => 'Kích thước ảnh đại diện tối đa là 2MB',
+            ]);
+
+            if ($validator->fails()) {
                 return response([
                     'success' => false,
                     'message' => 'Dữ liệu không hợp lệ',
-                    'errors' => $validationResult['errors']
+                    'errors' => $validator->errors()
                 ], 422);
             }
 
-            // Update user profile
-            $updatedUser = $this->userService->updateUser($user, $request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            // ✅ Xử lý upload avatar (nếu có)
+            if ($request->hasFile('avatar')) {
+                $file = $request->file('avatar');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('avatars', $filename, 'public'); // Lưu vào storage/app/public/avatars
+
+                // Nếu người dùng đã có avatar cũ thì xóa đi (tuỳ chọn)
+                if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                    Storage::disk('public')->delete($user->avatar);
+                }
+
+                // Cập nhật đường dẫn mới
+                $user->avatar = $path;
+            }
+
+            // ✅ Update các thông tin khác
+            $user->fill($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            $user->save();
 
             return response([
                 'success' => true,
                 'message' => 'Cập nhật thông tin cá nhân thành công',
                 'data' => [
-                    'user' => $updatedUser
+                    'user' => $user->fresh()
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -229,6 +255,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Block/Unblock user (admin only)
@@ -264,7 +291,6 @@ class UserController extends Controller
                     'user' => $updatedUser
                 ]
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response([
                 'success' => false,
@@ -309,7 +335,6 @@ class UserController extends Controller
                 'success' => true,
                 'message' => 'Xóa người dùng thành công'
             ], 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response([
                 'success' => false,
@@ -322,5 +347,40 @@ class UserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+    public function changePassword(Request $request)
+    {
+        // 1. Validation
+        $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|confirmed|min:6',
+        ]);
+
+        // Lấy người dùng hiện tại đang đăng nhập
+        $user = $request->user();
+
+        // 2. Xác thực Mật khẩu Cũ (Quan trọng nhất)
+        // Kiểm tra xem mật khẩu hiện tại có khớp với mật khẩu người dùng đang dùng không
+        if (!Hash::check($request->current_password, $user->password)) {
+            // Throw ValidationException để trả về lỗi 422 JSON
+            throw ValidationException::withMessages([
+                'current_password' => ['Mật khẩu hiện tại không chính xác.'],
+            ]);
+        }
+
+        // 3. Cập nhật Mật khẩu Mới
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Tùy chọn: Hủy bỏ tất cả các token khác (để yêu cầu đăng nhập lại)
+        // if ($user->tokens()) {
+        //     $user->tokens()->where('id', '!=', $request->bearerToken())->delete();
+        // }
+
+
+        // 4. Trả về phản hồi thành công
+        return response()->json([
+            'message' => 'Mật khẩu đã được thay đổi thành công.',
+        ], 200);
     }
 }
