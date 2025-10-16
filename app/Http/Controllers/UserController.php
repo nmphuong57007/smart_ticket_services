@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
+
 
 class UserController extends Controller
 {
@@ -282,7 +284,9 @@ class UserController extends Controller
                 'email' => 'sometimes|required|email|max:100|unique:users,email,' . $user->id,
                 'phone' => 'sometimes|nullable|string|max:20|unique:users,phone,' . $user->id,
                 'address' => 'sometimes|nullable|string|max:255',
-                'gender' => 'sometimes|nullable|in:male,female,other'
+                'gender' => 'sometimes|nullable|in:male,female,other',
+                'avatar' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,gif|max:2048', // 👈 thêm dòng này
+
             ], [
                 'fullname.required' => 'Họ tên không được để trống',
                 'fullname.string' => 'Họ tên phải là chuỗi ký tự',
@@ -296,7 +300,10 @@ class UserController extends Controller
                 'phone.unique' => 'Số điện thoại này đã được sử dụng',
                 'address.string' => 'Địa chỉ phải là chuỗi ký tự',
                 'address.max' => 'Địa chỉ không được vượt quá 255 ký tự',
-                'gender.in' => 'Giới tính phải là male, female hoặc other'
+                'gender.in' => 'Giới tính phải là male, female hoặc other',
+                'avatar.image' => 'Tệp tải lên phải là hình ảnh',
+                'avatar.mimes' => 'Ảnh đại diện chỉ chấp nhận định dạng: jpg, jpeg, png, gif',
+                'avatar.max' => 'Kích thước ảnh đại diện tối đa là 2MB'
             ]);
 
             if ($validator->fails()) {
@@ -307,9 +314,24 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Update user profile
-            $user->update($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            // ✅ Xử lý upload avatar (nếu có)
+            if ($request->hasFile('avatar')) {
+                $file = $request->file('avatar');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $path = $file->storeAs('avatars', $filename, 'public'); // Lưu vào storage/app/public/avatars
 
+                // Nếu người dùng đã có avatar cũ thì xóa đi (tuỳ chọn)
+                if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                    Storage::disk('public')->delete($user->avatar);
+                }
+
+                // Cập nhật đường dẫn mới
+                $user->avatar = $path;
+            }
+            // Update user profile
+            // ✅ Update các thông tin khác
+            $user->fill($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            $user->save();
             return response([
                 'success' => true,
                 'message' => 'Cập nhật thông tin cá nhân thành công',

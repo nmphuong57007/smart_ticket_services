@@ -25,14 +25,13 @@ Route::middleware('api.auth')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-    Route::prefix('auth')->group(function () {
-        Route::post('/change-password', [UserController::class, 'changePassword']);
-    });
 
     Route::prefix('auth')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
-        Route::put('/profile', [UserController::class, 'updateProfile']);
+        Route::post('/profile', [UserController::class, 'updateProfile']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/change-password', [UserController::class, 'changePassword']);
+
 
         // Session management
         Route::get('/sessions', [AuthController::class, 'getSessions']);
