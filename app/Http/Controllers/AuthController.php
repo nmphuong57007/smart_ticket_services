@@ -257,7 +257,7 @@ class AuthController extends Controller
             $this->authService->revokeAllTokens($user);
 
             return response([
-                'success' => true,  
+                'success' => true,
                 'message' => 'Huỷ tất cả phiên đăng nhập thành công'
             ], 200);
 

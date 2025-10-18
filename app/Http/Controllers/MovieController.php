@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Services\Movie\MovieService;
 use App\Http\Validator\Movie\MovieFilterValidator;
+use App\Models\Movie;
+use Illuminate\Container\Attributes\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB as FacadesDB;
 
 class MovieController extends Controller
 {
@@ -63,5 +66,25 @@ class MovieController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Lấy thông tin chi tiết của một phim
+     */
+    public function show($id)
+    {
+        $movie = Movie::find($id);
+
+        if (!$movie) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Phim không tồn tại.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $movie
+        ]);
     }
 }

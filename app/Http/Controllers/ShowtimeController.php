@@ -11,6 +11,7 @@ class ShowtimeController extends Controller
     protected ShowtimeService $showtimeService;
     protected ShowtimeFilterValidator $showtimeFilterValidator;
 
+
     public function __construct(
         ShowtimeService $showtimeService,
         ShowtimeFilterValidator $showtimeFilterValidator
@@ -34,7 +35,7 @@ class ShowtimeController extends Controller
                     'errors' => $validationResult['errors']
                 ], 422);
             }
-
+          
             // Gom filters
             $filters = [
                 'cinema_id'  => $request->query('cinema_id'),
