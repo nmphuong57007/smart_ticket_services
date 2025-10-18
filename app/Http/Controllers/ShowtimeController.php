@@ -66,7 +66,6 @@ class ShowtimeController extends Controller
                     ]
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -89,7 +88,6 @@ class ShowtimeController extends Controller
                 'message' => 'Lấy danh sách ngày chiếu thành công',
                 'data' => ['dates' => $dates]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -112,7 +110,6 @@ class ShowtimeController extends Controller
                 'message' => 'Lấy danh sách phòng chiếu thành công',
                 'data' => ['rooms' => $rooms]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -135,11 +132,72 @@ class ShowtimeController extends Controller
                 'message' => 'Lấy thống kê lịch chiếu thành công',
                 'data' => ['statistics' => $stats]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
                 'message' => 'Lấy thống kê lịch chiếu thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Xem lịch chiếu theo ngày (tất cả phim chiếu trong ngày)
+     */
+    public function getByDate(Request $request)
+    {
+        try {
+            $date = $request->query('date');
+            if (!$date) {
+                return response([
+                    'success' => false,
+                    'message' => 'Vui lòng truyền tham số date (YYYY-MM-DD)'
+                ], 422);
+            }
+
+            $showtimes = $this->showtimeService->getShowtimesByDate($date);
+
+            return response([
+                'success' => true,
+                'message' => 'Lấy lịch chiếu theo ngày thành công',
+                'data' => $showtimes
+            ], 200);
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Lấy lịch chiếu theo ngày thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Xem lịch chiếu theo ngày và loại ngôn ngữ (phụ đề, lồng tiếng, thuyết minh)
+     */
+    public function getByDateLanguage(Request $request)
+    {
+        try {
+            $date = $request->query('date');
+            $language = $request->query('language');
+
+            if (!$date || !$language) {
+                return response([
+                    'success' => false,
+                    'message' => 'Thiếu tham số date hoặc language'
+                ], 422);
+            }
+
+            $showtimes = $this->showtimeService->getShowtimesByDateAndLanguage($date, $language);
+
+            return response([
+                'success' => true,
+                'message' => 'Lấy lịch chiếu theo ngày và ngôn ngữ thành công',
+                'data' => $showtimes
+            ], 200);
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Lấy lịch chiếu theo ngày và ngôn ngữ thất bại',
                 'error' => $e->getMessage()
             ], 500);
         }

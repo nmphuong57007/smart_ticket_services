@@ -2,20 +2,23 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Room;
 use App\Models\Cinema;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 class RoomFactory extends Factory
 {
     protected $model = Room::class;
 
-    public function definition(): array
+    public function definition()
     {
+        $faker = \Faker\Factory::create('vi_VN');
+
         return [
-            'cinema_id' => Cinema::inRandomOrder()->first()->id, // đảm bảo tồn tại
-            'name' => 'Phòng ' . $this->faker->numberBetween(1, 10),
-            'seat_map' => json_encode($this->faker->randomElements(range(1, 50), 30)),
+            'cinema_id' => Cinema::inRandomOrder()->first()?->id ?? Cinema::factory(),
+            'name' => 'Phòng ' . $faker->randomElement(['A', 'B', 'C', 'D', 'E']) . $faker->numberBetween(1, 5),
+            'seat_map' => null, // giữ null hoặc bạn có thể tạo seat_map mẫu
+            'created_at' => $faker->dateTimeBetween('-1 year', 'now'),
         ];
     }
 }

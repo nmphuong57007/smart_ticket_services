@@ -18,6 +18,7 @@ class Showtime extends Model
         'show_time',
         'price',
         'format',
+        'language_type',
     ];
 
     // Lấy thông tin phim

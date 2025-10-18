@@ -47,7 +47,7 @@ class ShowtimeService
     }
 
     /**
-     * ✅ Lấy tất cả các ngày chiếu của một rạp (tổng hợp từ các phòng)
+     * Lấy tất cả các ngày chiếu của một rạp (tổng hợp từ các phòng)
      */
     public function getShowDatesByCinema(int $cinemaId): array
     {
@@ -90,4 +90,55 @@ class ShowtimeService
             'total_rooms' => $totalRooms,
         ];
     }
+
+    public function getShowtimesByDate(string $date)
+{
+    return Showtime::with(['movie:id,title,poster', 'room:id,name'])
+        ->whereDate('show_date', $date)
+        ->orderBy('show_time')
+        ->get()
+        ->groupBy('movie_id')
+        ->map(function ($group) {
+            $movie = $group->first()->movie;
+            return [
+                'movie_id' => $movie->id,
+                'movie_title' => $movie->title,
+                'poster' => $movie->poster,
+                'showtimes' => $group->map(function ($item) {
+                    return [
+                        'time' => $item->show_time,
+                        'format' => $item->format,
+                        'language_type' => $item->language_type,
+                        'room' => $item->room->name ?? null
+                    ];
+                })->values()
+            ];
+        })->values();
+}
+
+public function getShowtimesByDateAndLanguage(string $date, string $language)
+{
+    return Showtime::with(['movie:id,title,poster', 'room:id,name'])
+        ->whereDate('show_date', $date)
+        ->where('language_type', $language)
+        ->orderBy('show_time')
+        ->get()
+        ->groupBy('movie_id')
+        ->map(function ($group) {
+            $movie = $group->first()->movie;
+            return [
+                'movie_id' => $movie->id,
+                'movie_title' => $movie->title,
+                'poster' => $movie->poster,
+                'showtimes' => $group->map(function ($item) {
+                    return [
+                        'time' => $item->show_time,
+                        'format' => $item->format,
+                        'room' => $item->room->name ?? null
+                    ];
+                })->values()
+            ];
+        })->values();
+}
+
 }

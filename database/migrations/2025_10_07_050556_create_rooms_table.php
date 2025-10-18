@@ -16,7 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('cinema_id')->nullable();
             $table->string('name', 50)->nullable();
             $table->text('seat_map')->nullable();
-            
+            $table->timestamps();
+
             $table->index('cinema_id');
         });
     }

@@ -68,6 +68,10 @@ Route::prefix('showtimes')->group(function () {
     Route::get('/',               [ShowtimeController::class, 'index']);     // Lấy danh sách lịch chiếu với filter & pagination
     Route::get('/rooms',          [ShowtimeController::class, 'rooms']);     // Lấy tất cả phòng có lịch chiếu
     Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
+
+    // Thêm 2 route mới:
+    Route::get('/by-date',          [ShowtimeController::class, 'getByDate']);         // Lấy lịch chiếu theo ngày
+    Route::get('/by-date-language', [ShowtimeController::class, 'getByDateLanguage']); // Lấy lịch chiếu theo ngày + ngôn ngữ
 });
 
 // Cinema routes
