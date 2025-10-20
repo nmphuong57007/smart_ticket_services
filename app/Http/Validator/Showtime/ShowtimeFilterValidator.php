@@ -9,7 +9,7 @@ class ShowtimeFilterValidator extends BaseValidator
     public function rules(): array
     {
         return [
-            'cinema_id' => 'nullable|integer|exists:cinemas,id', // ✅ thêm lọc theo rạp
+            'cinema_id' => 'nullable|integer|exists:cinemas,id', // thêm lọc theo rạp
             'room_id' => 'nullable|integer|exists:rooms,id',
             'movie_id' => 'nullable|integer|exists:movies,id',
             'show_date' => 'nullable|date_format:Y-m-d',

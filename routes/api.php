@@ -14,7 +14,7 @@ use App\Http\Controllers\CinemaController;
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
-    Route::post('/login', [AuthController::class, 'login'])->name('login');
+    Route::post('/login',    [AuthController::class, 'login'])->name('login');
 });
 
 // Protected routes (authentication required)
@@ -55,49 +55,20 @@ Route::middleware('api.auth')->group(function () {
     });
 });
 
-
-
 // Movie routes
 Route::prefix('movies')->group(function () {
     Route::get('/list', [MovieController::class, 'index']);
     Route::get('/{id}', [MovieController::class, 'show']);
 });
 
-
-// Showtime routes - group prefix & middleware
-Route::prefix('showtimes')->group(function () {
-    Route::get('/', [ShowtimeController::class, 'index']);                   // Lấy danh sách lịch chiếu với filter & pagination
-    Route::get('/rooms', [ShowtimeController::class, 'rooms']);              // Lấy tất cả phòng có lịch chiếu
-    Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
-});
-
-
 // Showtime routes
 Route::prefix('showtimes')->group(function () {
     Route::get('/',               [ShowtimeController::class, 'index']);     // Lấy danh sách lịch chiếu với filter & pagination
     Route::get('/rooms',          [ShowtimeController::class, 'rooms']);     // Lấy tất cả phòng có lịch chiếu
     Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
-});
-
-// Cinema routes
-Route::prefix('cinemas')->group(function () {
-    Route::get('/',                     [CinemaController::class, 'index']);       // Lấy danh sách rạp
-    Route::get('/statistics',           [CinemaController::class, 'statistics']);  // Thống kê tổng quan
-    Route::get('/{id}',                 [CinemaController::class, 'show']);        // Chi tiết 1 rạp
-    Route::get('/{cinemaId}/rooms',     [CinemaController::class, 'rooms']);       // Danh sách phòng của rạp
-    Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
-});
-
-
-// Showtime routes
-Route::prefix('showtimes')->group(function () {
-    Route::get('/',               [ShowtimeController::class, 'index']);     // Lấy danh sách lịch chiếu với filter & pagination
-    Route::get('/rooms',          [ShowtimeController::class, 'rooms']);     // Lấy tất cả phòng có lịch chiếu
-    Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
-
-    // Thêm 2 route mới:
     Route::get('/by-date',          [ShowtimeController::class, 'getByDate']);         // Lấy lịch chiếu theo ngày
     Route::get('/by-date-language', [ShowtimeController::class, 'getByDateLanguage']); // Lấy lịch chiếu theo ngày + ngôn ngữ
+    Route::get('/movie/{movieId}/full', [ShowtimeController::class, 'fullShowtimesByMovie']); // full showtimes theo phim
 });
 
 // Cinema routes

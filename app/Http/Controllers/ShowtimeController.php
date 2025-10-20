@@ -35,7 +35,7 @@ class ShowtimeController extends Controller
                     'errors' => $validationResult['errors']
                 ], 422);
             }
-          
+
             // Gom filters
             $filters = [
                 'cinema_id'  => $request->query('cinema_id'),
@@ -199,6 +199,61 @@ class ShowtimeController extends Controller
             return response([
                 'success' => false,
                 'message' => 'Lấy lịch chiếu theo ngày và ngôn ngữ thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Tạo mới một suất chiếu và sinh ghế tự động
+     */
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'movie_id'     => 'required|exists:movies,id',
+            'room_id'      => 'required|exists:rooms,id',
+            'show_date'    => 'required|date_format:Y-m-d',
+            'show_time'    => 'required|date_format:H:i',
+            'price'        => 'nullable|numeric|min:0',
+            'format'       => 'nullable|string|max:50',
+            'language_type' => 'nullable|string|max:50',
+        ]);
+
+        try {
+            // Tạo showtime
+            $showtime = $this->showtimeService->createShowtime($data);
+
+            return response([
+                'success' => true,
+                'message' => 'Tạo suất chiếu thành công, ghế đã được sinh tự động',
+                'data' => $showtime
+            ], 201);
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Tạo suất chiếu thất bại',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Xem toàn bộ lịch chiếu của một phim, gồm ngày, giờ, và ghế còn trống
+     */
+    public function fullShowtimesByMovie(int $movieId)
+    {
+        try {
+            $fullData = $this->showtimeService->getFullShowtimesByMovie($movieId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Lấy lịch chiếu đầy đủ thành công',
+                'data' => $fullData
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lấy lịch chiếu đầy đủ thất bại',
                 'error' => $e->getMessage()
             ], 500);
         }
