@@ -13,6 +13,7 @@ use App\Http\Controllers\PointsHistoryController;
 use App\Http\Controllers\ShowtimeController;
 
 use App\Http\Controllers\CinemaController;
+use App\Http\Controllers\DiscountController;
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -91,4 +92,11 @@ Route::prefix('cinemas')->group(function () {
     Route::get('/{id}',                 [CinemaController::class, 'show']);        // Chi tiết 1 rạp
     Route::get('/{cinemaId}/rooms',     [CinemaController::class, 'rooms']);       // Danh sách phòng của rạp
     Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
+});
+Route::prefix('discounts')->middleware('api.auth')->group(function () {
+    Route::get('/', [DiscountController::class, 'index'])->middleware('role:admin,staff');
+    Route::post('/', [DiscountController::class, 'store'])->middleware('role:admin,staff');
+    Route::put('/{id}', [DiscountController::class, 'update'])->middleware('role:admin,staff');
+    Route::delete('/{id}', [DiscountController::class, 'destroy'])->middleware('role:admin');
+    Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
 });
