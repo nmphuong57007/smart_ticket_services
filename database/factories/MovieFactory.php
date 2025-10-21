@@ -8,54 +8,29 @@ use Illuminate\Support\Str;
 
 class MovieFactory extends Factory
 {
-    /**
-     * The name of the factory's corresponding model.
-     *
-     * @var string
-     */
     protected $model = Movie::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array
-     */
     public function definition()
     {
-        $genres = ['Hành động', 'Khoa học viễn tưởng', 'Hài', 'Kinh dị', 'Lãng mạn', 'Phiêu lưu'];
+        $faker = \Faker\Factory::create('vi_VN');
+
+        $genres = ['Hành động', 'Khoa học viễn tưởng', 'Hài', 'Kinh dị', 'Lãng mạn', 'Phiêu lưu', 'Hoạt hình', 'Chiến tranh'];
         $formats = ['2D', '3D', 'IMAX', '4DX'];
-        $validStatuses = ['coming', 'showing', 'stopped'];
+        $statuses = ['coming', 'showing', 'stopped'];
+
+        $chosenGenres = $faker->randomElements($genres, 2);
 
         return [
-            // Cột 'title'
-            'title' => $this->faker->sentence(3),
-
-            // Cột 'poster' (URL hình ảnh giả)
-            'poster' => 'https://picsum.photos/200/300?random=' . $this->faker->unique()->numberBetween(1, 10000),
-
-            // Cột 'trailer' (URL Youtube giả)
-            'trailer' => 'https://www.youtube.com/watch?v=YDsEMotFimg&list=RDYDsEMotFimg&start_radio=1',
-
-            // Cột 'description' (Đoạn văn dài)
-            'description' => $this->faker->paragraph(4),
-
-            // Cột 'genre' (Chọn ngẫu nhiên 2 thể loại và nối lại)
-            'genre' => $this->faker->randomElements($genres, 2, false)[0] . ', ' . $this->faker->randomElements($genres, 2, false)[1],
-
-            // Cột 'duration' (Thời lượng ngẫu nhiên từ 90 đến 150 phút)
-            'duration' => $this->faker->numberBetween(90, 150),
-
-            // Cột 'format' (Định dạng ngẫu nhiên)
-            'format' => $this->faker->randomElement($formats),
-
-            // Cột 'release_date' (Ngày phát hành trong 1 năm qua)
-            'release_date' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
-
-            // Cột 'status' (Trạng thái ngẫu nhiên: 1 cho Đang chiếu, 0 cho Sắp chiếu/Đã kết thúc)
-            'status' => $this->faker->randomElement($validStatuses),
-
-            // created_at & updated_at được xử lý tự động
-            'created_at' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d H:i:s')
+            'title' => $faker->sentence(3),
+            'poster' => 'https://picsum.photos/400/600?random=' . $faker->unique()->numberBetween(1, 9999),
+            'trailer' => 'https://www.youtube.com/watch?v=' . Str::random(11),
+            'description' => $faker->paragraph(5),
+            'genre' => implode(', ', $chosenGenres),
+            'duration' => $faker->numberBetween(90, 160),
+            'format' => $faker->randomElement($formats),
+            'release_date' => $faker->dateTimeBetween('-1 year', '+3 months')->format('Y-m-d'),
+            'status' => $faker->randomElement($statuses),
+            'created_at' => $faker->dateTimeBetween('-1 year', 'now')
         ];
     }
 }

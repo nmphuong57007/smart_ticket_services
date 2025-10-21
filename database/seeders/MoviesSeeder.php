@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Movie;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Movie;
 
 class MoviesSeeder extends Seeder
 {
@@ -13,9 +12,10 @@ class MoviesSeeder extends Seeder
      */
     public function run(): void
     {
-        // Tạo 50 bản ghi phim mẫu
+        Movie::query()->delete();
+
         Movie::factory()
-            ->count(50) // Số lượng bản ghi muốn tạo
+            ->count(20) // Tạo 20 phim mẫu
             ->create();
     }
 }
