@@ -9,11 +9,15 @@ class CinemaFactory extends Factory
 {
     protected $model = Cinema::class;
 
-    public function definition(): array
+    public function definition()
     {
+        $faker = \Faker\Factory::create('vi_VN');
+
         return [
-            'name' => 'Cinema ' . $this->faker->unique()->numberBetween(1, 10),
-            'address' => $this->faker->address,
+            'name' => 'Rạp ' . $faker->company,    // Tên rạp
+            'address' => $faker->address,          // Địa chỉ
+            'phone' => $faker->phoneNumber,        // Số điện thoại
+            'created_at' => $faker->dateTimeBetween('-1 year', 'now'),
         ];
     }
 }

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             RoomsSeeder::class,      // tạo phòng trước
             MoviesSeeder::class,     // tạo phim trước
             ShowtimesSeeder::class,  // tạo lịch chiếu sau khi có phòng & phim
+            SeatSeeder::class,      // tạo ghế sau khi có lịch chiếu
             PointsHistorySeeder::class, // tạo lịch sử điểm
 
         ]);
