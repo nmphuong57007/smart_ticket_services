@@ -10,6 +10,7 @@ use App\Http\Controllers\PointsHistoryController;
 
 use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
+use App\Http\Controllers\ComboController;
 
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
@@ -78,4 +79,10 @@ Route::prefix('cinemas')->group(function () {
     Route::get('/{id}',                 [CinemaController::class, 'show']);        // Chi tiết 1 rạp
     Route::get('/{cinemaId}/rooms',     [CinemaController::class, 'rooms']);       // Danh sách phòng của rạp
     Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
+});
+
+
+Route::prefix('combos')->group(function () {
+    Route::get('/',     [ComboController::class, 'index']);// danh sách public
+    Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 });
