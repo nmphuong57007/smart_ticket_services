@@ -11,6 +11,7 @@ use App\Http\Controllers\PointsHistoryController;
 use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
+use App\Http\Controllers\TicketController;
 
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
@@ -81,8 +82,11 @@ Route::prefix('cinemas')->group(function () {
     Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
 });
 
-
+// Combo routes
 Route::prefix('combos')->group(function () {
-    Route::get('/',     [ComboController::class, 'index']);// danh sách public
+    Route::get('/',     [ComboController::class, 'index']); // danh sách public
     Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 });
+
+// Public route xem thông tin vé trước khi đặt
+Route::get('tickets/preview', [TicketController::class, 'preview']);
