@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             ShowtimesSeeder::class,  // tạo lịch chiếu sau khi có phòng & phim
             SeatSeeder::class,      // tạo ghế sau khi có lịch chiếu
             PointsHistorySeeder::class, // tạo lịch sử điểm
-
+            ComboSeeder::class,      // tạo combo
         ]);
     }
 }
