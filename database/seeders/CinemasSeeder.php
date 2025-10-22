@@ -7,8 +7,15 @@ use App\Models\Cinema;
 
 class CinemasSeeder extends Seeder
 {
+    /**
+     * Run the database seeds.
+     */
     public function run(): void
     {
-        Cinema::factory()->count(5)->create();
+        Cinema::query()->delete();
+
+        Cinema::factory()
+            ->count(5) // Tạo 5 rạp phim
+            ->create();
     }
 }
