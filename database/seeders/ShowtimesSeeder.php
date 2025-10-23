@@ -7,6 +7,7 @@ use App\Models\Showtime;
 use App\Models\Room;
 use App\Models\Movie;
 use Faker\Factory as Faker;
+use Illuminate\Support\Facades\DB;
 
 class ShowtimesSeeder extends Seeder
 {
@@ -27,6 +28,7 @@ class ShowtimesSeeder extends Seeder
         // Xoá dữ liệu cũ để seed lại
         Showtime::query()->delete();
 
+        $showtimeData = [];
 
         foreach ($rooms as $room) {
             // Mỗi phòng chiếu trong 7 ngày tới
@@ -42,7 +44,7 @@ class ShowtimesSeeder extends Seeder
                     $selectedTimes = $faker->randomElements($showTimes, $numShowtimes);
 
                     foreach ($selectedTimes as $time) {
-                        Showtime::create([
+                        $showtimeData[] = [
                             'movie_id' => $movie->id,
                             'room_id' => $room->id,
                             'show_date' => $showDate,
@@ -50,10 +52,16 @@ class ShowtimesSeeder extends Seeder
                             'price' => $faker->randomElement([65000, 75000, 85000, 90000, 100000, 120000]),
                             'format' => $faker->randomElement($formats),
                             'language_type' => $faker->randomElement($languages),
-                        ]);
+                        ];
                     }
                 }
             }
+        }
+
+        // Bulk insert để tăng tốc
+        $chunks = array_chunk($showtimeData, 1000);
+        foreach ($chunks as $chunk) {
+            DB::table('showtimes')->insert($chunk);
         }
 
         echo "Seed dữ liệu lịch chiếu (Showtimes) thành công!\n";
