@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Content;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -26,6 +27,7 @@ class DatabaseSeeder extends Seeder
             SeatSeeder::class,      // tạo ghế sau khi có lịch chiếu
             PointsHistorySeeder::class, // tạo lịch sử điểm
             ComboSeeder::class,      // tạo combo
+            ContentsSeeder::class,   // tạo news
         ]);
 
         // Bật lại foreign key checks

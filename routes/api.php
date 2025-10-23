@@ -95,7 +95,7 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
     Route::put('/{id}', [DiscountController::class, 'update'])->middleware('role:admin,staff');
     Route::delete('/{id}', [DiscountController::class, 'destroy'])->middleware('role:admin');
     Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
-
+});
 
 Route::prefix('combos')->group(function () {
     Route::get('/',     [ComboController::class, 'index']);// danh sách public
