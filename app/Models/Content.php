@@ -5,24 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Cinema extends Model
+class Content extends Model
 {
     use HasFactory;
 
     public $timestamps = false;
 
     protected $fillable = [
-        'name',
-        'address',
-        'phone',
+        'type',
+        'title',
+        'image',
+        'description',
         'created_at',
     ];
-
-    /**
-     * Lấy danh sách phòng của rạp
-     */
-    public function rooms()
-    {
-        return $this->hasMany(Room::class);
-    }
 }
