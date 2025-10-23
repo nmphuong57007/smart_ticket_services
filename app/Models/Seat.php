@@ -15,7 +15,8 @@ class Seat extends Model
         'showtime_id',
         'seat_code',
         'type',
-        'status'
+        'status',
+        'price'
     ];
 
     // Quan hệ ngược tới showtime
