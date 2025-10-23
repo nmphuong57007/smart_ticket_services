@@ -23,11 +23,20 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $faker = \Faker\Factory::create('vi_VN');
+
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
+            'fullname' => $faker->name(),
+            'email' => $faker->unique()->safeEmail(),
+            'phone' => $faker->phoneNumber(),
+            'address' => $faker->address(),
+            'gender' => $faker->randomElement(['male', 'female']),
+            'avatar' => 'https://picsum.photos/id/' . $faker->unique()->numberBetween(1, 9999) . '/200/200',
             'password' => static::$password ??= Hash::make('password'),
+            'role' => 'customer',
+            'points' => $faker->numberBetween(0, 1000),
+            'status' => 'active',
+            'email_verified_at' => now(),
             'remember_token' => Str::random(10),
         ];
     }
@@ -37,7 +46,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
         ]);
     }
