@@ -81,8 +81,12 @@ Route::prefix('cinemas')->group(function () {
     Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
 });
 
-
 Route::prefix('combos')->group(function () {
     Route::get('/',     [ComboController::class, 'index']);// danh sách public
     Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
+});
+
+Route::prefix('contents')->group(function () {
+    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']);// danh sách public
+    Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
 });
