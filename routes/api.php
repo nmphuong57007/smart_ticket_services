@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -15,7 +17,10 @@ use App\Http\Controllers\ComboController;
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
-    Route::post('/login',    [AuthController::class, 'login'])->name('login');
+    Route::post('/login', [AuthController::class, 'login'])->name('login');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+    Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
+
 });
 
 // Protected routes (authentication required)
@@ -27,8 +32,9 @@ Route::middleware('api.auth')->group(function () {
 
     Route::prefix('auth')->group(function () {
         Route::get('/profile', [AuthController::class, 'profile']);
-        Route::put('/profile', [UserController::class, 'updateProfile']);
+        Route::post('/profile', [UserController::class, 'updateProfile']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/change-password', [UserController::class, 'changePassword']);
 
         // Session management
         Route::get('/sessions',               [AuthController::class, 'getSessions']);
