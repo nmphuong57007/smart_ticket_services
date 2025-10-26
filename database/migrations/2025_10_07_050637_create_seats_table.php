@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('seats', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('showtime_id')->nullable();
-            $table->string('seat_code', 10)->nullable();
+            $table->unsignedBigInteger('showtime_id');
+            $table->string('seat_code', 10);
             $table->enum('type', ['normal', 'vip'])->default('normal');
             $table->enum('status', ['available', 'booked'])->default('available');
-            
+            $table->decimal('price', 10, 2)->default(0);
             $table->index('showtime_id');
         });
     }
