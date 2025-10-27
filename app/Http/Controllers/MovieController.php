@@ -5,9 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Services\Movie\MovieService;
 use App\Http\Validator\Movie\MovieFilterValidator;
 use App\Models\Movie;
-use Illuminate\Container\Attributes\DB;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB as FacadesDB;
 
 class MovieController extends Controller
 {
