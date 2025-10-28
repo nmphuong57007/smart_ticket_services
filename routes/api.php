@@ -12,6 +12,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
 
 use App\Http\Controllers\ShowtimeController;
+use App\Http\Controllers\Admin\ShowtimeController as AdminShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
@@ -120,6 +121,19 @@ Route::prefix('showtimes')->group(function () {
 });
 
 // Cinema routes (Quản lý rạp chiếu phim)
+Route::prefix('admin')->middleware(['api.auth'])->group(function () {
+    Route::middleware('role:admin,staff')->group(function () {
+        Route::get('/showtimes', [AdminShowtimeController::class, 'index']);
+        Route::post('/showtimes', [AdminShowtimeController::class, 'store']);
+        Route::put('/showtimes/{id}', [AdminShowtimeController::class, 'update']);
+    });
+
+    Route::middleware('role:admin')->group(function () {
+        Route::delete('/showtimes/{id}', [AdminShowtimeController::class, 'destroy']);
+    });
+});
+
+// Cinema routes
 Route::prefix('cinemas')->group(function () {
 
     // Public: Xem danh sách rạp và chi tiết
@@ -210,4 +224,3 @@ Route::prefix('seats')->group(function () {
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
     });
 });
-
