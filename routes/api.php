@@ -66,21 +66,22 @@ Route::middleware('api.auth')->group(function () {
 Route::prefix('movies')->group(function () {
     // Public
     Route::get('/list', [MovieController::class, 'index']); // Lấy danh sách phim (filter, paginate)
-    Route::get('/{id}', [MovieController::class, 'show']);  // Lấy chi tiết phim
+    Route::get('/{id}', [MovieController::class, 'show'])->whereNumber('id');  // Lấy chi tiết phim
 
-    // Protected (admin, staff)
+    // Staff
     Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
-        Route::post('/',             [MovieController::class, 'store']);       // Thêm phim mới
-        Route::put('/{id}',          [MovieController::class, 'update']);      // Cập nhật phim
-        Route::patch('/{id}/status', [MovieController::class, 'changeStatus']);// Đổi trạng thái
-        Route::get('/statistics',    [MovieController::class, 'statistics']);  // Thống kê phim
+        Route::get('/statistics', [MovieController::class, 'statistics']); // Thống kê phim
     });
 
-    // Admin-only
+    // Admin-only (toàn quyền)
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
-        Route::delete('/{id}', [MovieController::class, 'destroy']); // Xóa phim
+        Route::post('/',             [MovieController::class, 'store']);        // Thêm phim mới
+        Route::put('/{id}',          [MovieController::class, 'update']);       // Cập nhật phim
+        Route::patch('/{id}/status', [MovieController::class, 'changeStatus']); // Đổi trạng thái phim
+        Route::delete('/{id}',       [MovieController::class, 'destroy']);      // Xóa phim
     });
 });
+
 
 // Showtime routes
 Route::prefix('showtimes')->group(function () {
