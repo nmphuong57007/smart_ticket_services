@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use PHPUnit\Framework\Attributes\Ticket;
 
 class Showtime extends Model
 {
@@ -36,5 +37,9 @@ class Showtime extends Model
     public function seats()
     {
         return $this->hasMany(Seat::class);
+    }
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
     }
 }

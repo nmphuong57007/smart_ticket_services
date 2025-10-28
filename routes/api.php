@@ -4,13 +4,14 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\ShowtimeController as AdminShowtimeController;
+use App\Http\Controllers\ShowtimeController;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
 
-use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 
@@ -21,7 +22,6 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
-
 });
 
 // Protected routes (authentication required)
@@ -79,6 +79,15 @@ Route::prefix('showtimes')->group(function () {
     Route::get('/movie/{movieId}/full', [ShowtimeController::class, 'fullShowtimesByMovie']); // full showtimes theo phim
 });
 
+
+Route::prefix('admin')->middleware('api.auth')->group(function () {
+    Route::get('showtimes', [AdminShowtimeController::class, 'index'])->middleware('role:admin,staff');;
+    Route::post('showtimes', [AdminShowtimeController::class, 'store'])->middleware('role:admin,staff');;
+    Route::put('showtimes/{id}', [AdminShowtimeController::class, 'update'])->middleware('role:admin,staff');;
+    Route::delete('showtimes/{id}', [AdminShowtimeController::class, 'destroy'])->middleware('role:admin');;
+});
+
+
 // Cinema routes
 Route::prefix('cinemas')->group(function () {
     Route::get('/',                     [CinemaController::class, 'index']);       // Lấy danh sách rạp
@@ -98,12 +107,12 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
 });
 
 Route::prefix('combos')->group(function () {
-    Route::get('/',     [ComboController::class, 'index']);// danh sách public
+    Route::get('/',     [ComboController::class, 'index']); // danh sách public
     Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 
 });
 
 Route::prefix('contents')->group(function () {
-    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']);// danh sách public
+    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
 });
