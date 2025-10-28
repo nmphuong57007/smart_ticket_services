@@ -9,8 +9,7 @@ class Movie extends Model
 {
     use HasFactory;
 
-
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'title',
@@ -20,8 +19,9 @@ class Movie extends Model
         'genre',
         'duration',
         'format',
-        'release_date',
-        'status',
-        'created_at'
+        'language',       // Ngôn ngữ (dub/sub/narrated)
+        'release_date',   // Ngày khởi chiếu
+        'end_date',       // Ngày kết thúc
+        'status',         // Trạng thái phim (coming/showing/stopped)
     ];
 }
