@@ -22,7 +22,7 @@ return new class extends Migration
             $table->string('format', 50)->nullable();
             $table->date('release_date')->nullable();
             $table->enum('status', ['coming', 'showing', 'stopped'])->default('coming');
-            $table->timestamp('created_at')->nullable()->useCurrent();
+            $table->timestamps(); 
         });
     }
 

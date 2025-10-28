@@ -3,91 +3,92 @@
 namespace App\Http\Services\Movie;
 
 use App\Models\Movie;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class MovieService
 {
     /**
-     * Get movies with pagination and filtering
+     * Lấy danh sách phim (phân trang, lọc, sắp xếp)
      */
-    public function getMovies(array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function getMovies(array $filters = []): LengthAwarePaginator
     {
         $sortBy = $filters['sort_by'] ?? 'id';
         $sortOrder = $filters['sort_order'] ?? 'desc';
 
-        // Xây dựng query với filters và sorting
         return Movie::query()
-            ->when($filters['search'] ?? null, fn($query, $search) => $query->where(function ($subQuery) use ($search) {
-                $subQuery->where('title', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            }))
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
             ->when($filters['status'] ?? null, fn($query, $status) => $query->where('status', $status))
             ->when($filters['genre'] ?? null, fn($query, $genre) => $query->where('genre', 'like', "%{$genre}%"))
-            ->when(true, function ($query) use ($sortBy, $sortOrder) {
-                // Apply sorting logic
-                if (in_array($sortBy, ['id', 'created_at']) && $sortOrder === 'desc') {
-                    return $query->latest($sortBy);
-                } elseif (in_array($sortBy, ['id', 'created_at']) && $sortOrder === 'asc') {
-                    return $query->oldest($sortBy);
-                } else {
-                    return $query->orderBy($sortBy, $sortOrder);
-                }
-            })
+            ->orderBy($sortBy, $sortOrder)
             ->paginate($filters['per_page'] ?? 15);
     }
 
     /**
-     * Find movie by ID
+     * Lấy phim theo ID (bắt lỗi nếu không thấy)
      */
-    public function findMovieById(int $id): Movie
+    public function getMovieById(int $id): Movie
     {
         return Movie::findOrFail($id);
     }
 
     /**
-     * Create new movie
+     * Tạo mới phim
      */
     public function createMovie(array $data): Movie
     {
-        return Movie::create($data);
+        return DB::transaction(function () use ($data) {
+            return Movie::create($data);
+        });
     }
 
     /**
-     * Update movie
+     * Cập nhật phim
      */
     public function updateMovie(Movie $movie, array $data): Movie
     {
-        $movie->update($data);
-        return $movie->fresh();
+        return DB::transaction(function () use ($movie, $data) {
+            $movie->update($data);
+            return $movie->fresh();
+        });
     }
 
     /**
-     * Delete movie
+     * Xóa phim
      */
     public function deleteMovie(Movie $movie): bool
     {
-        return $movie->delete();
+        return DB::transaction(function () use ($movie) {
+            return $movie->delete();
+        });
     }
 
     /**
-     * Get movies by status
+     * Lấy phim theo trạng thái
      */
-    public function getMoviesByStatus(string $status): \Illuminate\Database\Eloquent\Collection
+    public function getMoviesByStatus(string $status): Collection
     {
         return Movie::where('status', $status)->get();
     }
 
     /**
-     * Get movies by genre
+     * Lấy phim theo thể loại
      */
-    public function getMoviesByGenre(string $genre): \Illuminate\Database\Eloquent\Collection
+    public function getMoviesByGenre(string $genre): Collection
     {
         return Movie::where('genre', 'like', "%{$genre}%")->get();
     }
 
     /**
-     * Search movies
+     * Tìm kiếm phim
      */
-    public function searchMovies(string $search): \Illuminate\Database\Eloquent\Collection
+    public function searchMovies(string $search): Collection
     {
         return Movie::where(function ($query) use ($search) {
             $query->where('title', 'like', "%{$search}%")
@@ -96,7 +97,7 @@ class MovieService
     }
 
     /**
-     * Get movie statistics
+     * Thống kê phim
      */
     public function getMovieStatistics(): array
     {
@@ -112,12 +113,7 @@ class MovieService
             'recent_movies' => Movie::latest('created_at')
                 ->limit(5)
                 ->select('id', 'title', 'status', 'release_date', 'created_at')
-                ->get()
+                ->get(),
         ];
-    }
-
-    public function getMovieById(int $id): ?Movie
-    {
-        return Movie::find($id);
     }
 }
