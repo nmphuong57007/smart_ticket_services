@@ -14,6 +14,7 @@ use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\BookingController;
 
 use App\Http\Controllers\DiscountController;
 // Public routes (no authentication required)
@@ -126,4 +127,13 @@ Route::get('tickets/preview', [TicketController::class, 'preview']);
 Route::prefix('contents')->group(function () {
     Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
+});
+
+Route::prefix('contents')->group(function () {
+    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']);// danh sách public
+    Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/bookings', [BookingController::class, 'store']);
 });
