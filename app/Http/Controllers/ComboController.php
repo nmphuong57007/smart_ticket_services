@@ -74,4 +74,65 @@ class ComboController extends Controller
             'data' => new ComboResource($combo)
         ], 200);
     }
+    public function store(Request $request)
+    {
+        $validation = $this->validator->validateCreate($request->all());
+        if (!$validation['success']) {
+            return response([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validation['errors']
+            ], 422);
+        }
+
+        $combo = $this->service->createCombo($request->all());
+
+        return response([
+            'success' => true,
+            'message' => 'Tạo combo thành công',
+            'data' => new ComboResource($combo)
+        ], 201);
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $validation = $this->validator->validateUpdate($request->all());
+        if (!$validation['success']) {
+            return response([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validation['errors']
+            ], 422);
+        }
+
+        $combo = $this->service->updateCombo($id, $request->all());
+        if (!$combo) {
+            return response([
+                'success' => false,
+                'message' => 'Combo không tồn tại'
+            ], 404);
+        }
+
+        return response([
+            'success' => true,
+            'message' => 'Cập nhật combo thành công',
+            'data' => new ComboResource($combo)
+        ]);
+    }
+
+    public function destroy(int $id)
+    {
+        $deleted = $this->service->deleteCombo($id);
+        if (!$deleted) {
+            return response([
+                'success' => false,
+                'message' => 'Combo không tồn tại'
+            ], 404);
+        }
+
+        return response([
+            'success' => true,
+            'message' => 'Xóa combo thành công'
+        ]);
+    }
 }

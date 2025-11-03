@@ -16,6 +16,8 @@ use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 
 use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\InventoryController;
+
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -111,11 +113,21 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
     Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
 });
 
+
+Route::prefix('admin/fb/inventory')->group(function () {
+    Route::get('/', [InventoryController::class, 'index']); // xem danh sách tồn
+    Route::post('/{id}/adjust', [InventoryController::class, 'adjust']); // nhập/xuất
+    Route::get('/{id}/history', [InventoryController::class, 'history']); // lịch sử
+});
+
+
 // Combo routes
-Route::prefix('combos')->group(function () {
+Route::prefix('admin/fb/combos')->group(function () {
     Route::get('/',     [ComboController::class, 'index']); // danh sách public
     Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
-
+    Route::post('/', [ComboController::class, 'store']);
+    Route::put('/{id}', [ComboController::class, 'update']);
+    Route::delete('/{id}', [ComboController::class, 'destroy']);
 });
 
 

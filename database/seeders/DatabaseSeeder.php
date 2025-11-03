@@ -21,13 +21,15 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,  // tạo user trước
             CinemasSeeder::class,      // tạo cinema trước rooms
-            RoomsSeeder::class,      // tạo phòng trước
+            // RoomsSeeder::class,      // tạo phòng trước
             MoviesSeeder::class,     // tạo phim trước
             ShowtimesSeeder::class,  // tạo lịch chiếu sau khi có phòng & phim
             SeatSeeder::class,      // tạo ghế sau khi có lịch chiếu
             PointsHistorySeeder::class, // tạo lịch sử điểm
             ComboSeeder::class,      // tạo combo
             ContentsSeeder::class,   // tạo news
+            ProductCategorySeeder::class, // tạo category trước products
+            ProductSeeder::class,    // tạo products sau khi có category
         ]);
 
         // Bật lại foreign key checks
