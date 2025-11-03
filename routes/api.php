@@ -116,3 +116,10 @@ Route::prefix('contents')->group(function () {
     Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
 });
+
+
+Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::get('/users', [UserController::class, 'index']);       // Danh sách người dùng
+    Route::put('/users/{id}/role', [UserController::class, 'updateRole']); // Đổi quyền
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);     // Xóa user
+});
