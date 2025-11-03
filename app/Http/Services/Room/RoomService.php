@@ -81,19 +81,6 @@ class RoomService
             ->get();
     }
 
-    // Thống kê phòng chiếu
-    public function getStatistics(): array
-    {
-        return [
-            'total_rooms' => Room::count(),
-            'active_rooms' => Room::where('status', 'active')->count(),
-            'maintenance_rooms' => Room::where('status', 'maintenance')->count(),
-            'closed_rooms' => Room::where('status', 'closed')->count(),
-            'total_seats' => (int) Room::sum('total_seats'),
-            'average_seats_per_room' => round(Room::avg('total_seats'), 2),
-        ];
-    }
-
     // Chuẩn hóa dữ liệu seat_map về mảng an toàn
     private function normalizeSeatMap(mixed $map): array
     {
@@ -144,5 +131,68 @@ class RoomService
         } catch (Throwable $e) {
             report($e);
         }
+    }
+
+    // Thống kê toàn hệ thống phòng chiếu
+    public function getStatistics(): array
+    {
+        return [
+            'total_rooms' => Room::count(),
+            'active_rooms' => Room::where('status', 'active')->count(),
+            'maintenance_rooms' => Room::where('status', 'maintenance')->count(),
+            'closed_rooms' => Room::where('status', 'closed')->count(),
+            'total_seats' => (int) Room::sum('total_seats'),
+        ];
+    }
+
+    // Thống kê phòng chiếu theo từng rạp
+    public function getStatisticsByCinema(): array
+    {
+        return DB::table('rooms')
+            ->join('cinemas', 'rooms.cinema_id', '=', 'cinemas.id')
+            ->select(
+                'cinemas.id as cinema_id',
+                'cinemas.name as cinema_name',
+                DB::raw('COUNT(rooms.id) as total_rooms'),
+                DB::raw('SUM(CASE WHEN rooms.status = "active" THEN 1 ELSE 0 END) as active_rooms'),
+                DB::raw('SUM(CASE WHEN rooms.status = "maintenance" THEN 1 ELSE 0 END) as maintenance_rooms'),
+                DB::raw('SUM(CASE WHEN rooms.status = "closed" THEN 1 ELSE 0 END) as closed_rooms'),
+                DB::raw('SUM(rooms.total_seats) as total_seats'),
+            )
+            ->groupBy('cinemas.id', 'cinemas.name')
+            ->orderBy('cinemas.name')
+            ->get()
+            ->toArray();
+    }
+
+    // Thống kê các phòng chiếu của một rạp cụ thể
+    public function getStatisticsByCinemaId(int $cinemaId): ?array
+    {
+        $cinemaRooms = Room::where('cinema_id', $cinemaId)
+            ->with('cinema:id,name')
+            ->get();
+
+        if ($cinemaRooms->isEmpty()) {
+            return null;
+        }
+
+        return [
+            'cinema' => [
+                'id' => $cinemaRooms->first()->cinema->id ?? null,
+                'name' => $cinemaRooms->first()->cinema->name ?? null,
+            ],
+            'total_rooms' => $cinemaRooms->count(),
+            'active_rooms' => $cinemaRooms->where('status', 'active')->count(),
+            'maintenance_rooms' => $cinemaRooms->where('status', 'maintenance')->count(),
+            'closed_rooms' => $cinemaRooms->where('status', 'closed')->count(),
+            'total_seats' => $cinemaRooms->sum('total_seats'),
+            'rooms' => $cinemaRooms->map(fn($room) => [
+                'id' => $room->id,
+                'name' => $room->name,
+                'status' => $room->status,
+                'total_seats' => $room->total_seats,
+                'created_at' => $room->created_at,
+            ])->values(),
+        ];
     }
 }

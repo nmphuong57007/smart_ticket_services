@@ -138,7 +138,9 @@ Route::prefix('rooms')->group(function () {
 
     // Staff & Admin routes
     Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
-        Route::get('/statistics', [RoomController::class, 'statistics']); // Thống kê phòng
+        Route::get('/statistics', [RoomController::class, 'statistics']);
+        Route::get('/statistics-by-cinema', [RoomController::class, 'statisticsByCinema']);
+        Route::get('/statistics/cinema/{cinemaId}', [RoomController::class, 'statisticsByCinemaId'])->whereNumber('cinemaId');
     });
 
     // Admin-only routes (toàn quyền CRUD)

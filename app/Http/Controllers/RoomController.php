@@ -22,9 +22,7 @@ class RoomController extends Controller
         $this->validator = $validator;
     }
 
-    /**
-     * Lấy danh sách phòng chiếu (phân trang, tìm kiếm, lọc)
-     */
+    // Lấy danh sách phòng chiếu (phân trang, tìm kiếm, lọc)
     public function index(Request $request): JsonResponse
     {
         $validation = $this->validator->validateWithStatus($request->query());
@@ -57,9 +55,7 @@ class RoomController extends Controller
         ]);
     }
 
-    /**
-     * Lấy chi tiết 1 phòng
-     */
+    // Lấy chi tiết phòng chiếu
     public function show(int $id): JsonResponse
     {
         $room = $this->service->getRoomById($id);
@@ -77,9 +73,7 @@ class RoomController extends Controller
         ]);
     }
 
-    /**
-     * Tạo mới phòng chiếu
-     */
+    // Tạo mới phòng chiếu
     public function store(RoomStoreRequest $request): JsonResponse
     {
         try {
@@ -98,9 +92,7 @@ class RoomController extends Controller
         }
     }
 
-    /**
-     * Cập nhật thông tin phòng chiếu
-     */
+    // Cập nhật thông tin phòng chiếu
     public function update(RoomUpdateRequest $request, int $id): JsonResponse
     {
         $room = $this->service->getRoomById($id);
@@ -120,9 +112,7 @@ class RoomController extends Controller
         ]);
     }
 
-    /**
-     * Xóa phòng chiếu
-     */
+    // Xóa phòng chiếu
     public function destroy(int $id): JsonResponse
     {
         $room = $this->service->getRoomById($id);
@@ -141,9 +131,7 @@ class RoomController extends Controller
         ]);
     }
 
-    /**
-     * Lấy danh sách phòng theo rạp
-     */
+    // Lấy danh sách phòng chiếu theo rạp
     public function byCinema(int $cinemaId): JsonResponse
     {
         $rooms = $this->service->getRoomsByCinema($cinemaId);
@@ -154,9 +142,7 @@ class RoomController extends Controller
         ]);
     }
 
-    /**
-     * Cập nhật trạng thái phòng chiếu
-     */
+    // Cập nhật trạng thái phòng chiếu
     public function changeStatus(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
@@ -180,14 +166,41 @@ class RoomController extends Controller
         ]);
     }
 
-    /**
-     * Thống kê tổng quan phòng chiếu
-     */
+    // Thống kê tổng quan phòng chiếu
     public function statistics(): JsonResponse
     {
         return response()->json([
             'success' => true,
             'data' => $this->service->getStatistics(),
+        ]);
+    }
+
+    // Thống kê phòng chiếu theo rạp
+    public function statisticsByCinema(): JsonResponse
+    {
+        $data = $this->service->getStatisticsByCinema();
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    // Thống kê các phòng chiếu của một rạp cụ thể
+    public function statisticsByCinemaId(int $cinemaId)
+    {
+        $data = $this->service->getStatisticsByCinemaId($cinemaId);
+
+        if (!$data) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy rạp hoặc rạp này chưa có phòng chiếu.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
         ]);
     }
 }
