@@ -12,7 +12,7 @@ class Seat extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'showtime_id',
+        'room_id',
         'seat_code',
         'type',
         'status',

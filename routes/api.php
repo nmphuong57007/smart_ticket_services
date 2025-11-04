@@ -14,6 +14,7 @@ use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\RoomController;
 
 use App\Http\Controllers\DiscountController;
 // Public routes (no authentication required)
@@ -126,4 +127,27 @@ Route::get('tickets/preview', [TicketController::class, 'preview']);
 Route::prefix('contents')->group(function () {
     Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
+});
+
+// Room routes
+Route::prefix('rooms')->group(function () {
+    // Public routes (ai cũng xem được)
+    Route::get('/',                  [RoomController::class, 'index']); // Lấy danh sách phòng (có filter, paginate)
+    Route::get('/{id}',              [RoomController::class, 'show'])->whereNumber('id'); // Chi tiết 1 phòng
+    Route::get('/cinema/{cinemaId}', [RoomController::class, 'byCinema'])->whereNumber('cinemaId'); // Phòng theo rạp
+
+    // Staff & Admin routes
+    Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
+        Route::get('/statistics', [RoomController::class, 'statistics']); // Thống kê tổng quan all phòng chiếu
+        Route::get('/statistics-by-cinema', [RoomController::class, 'statisticsByCinema']); // Thống kê phòng chiếu theo rạp
+        Route::get('/statistics/cinema/{cinemaId}', [RoomController::class, 'statisticsByCinemaId'])->whereNumber('cinemaId');// Thống kê các phòng chiếu của một rạp cụ thể
+    });
+
+    // Admin-only routes (toàn quyền CRUD)
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::post('/',             [RoomController::class, 'store']);        // Tạo mới phòng
+        Route::put('/{id}',          [RoomController::class, 'update']);       // Cập nhật phòng
+        Route::patch('/{id}/status', [RoomController::class, 'changeStatus']); // Đổi trạng thái phòng
+        Route::delete('/{id}',       [RoomController::class, 'destroy']);      // Xóa phòng
+    });
 });
