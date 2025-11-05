@@ -18,8 +18,8 @@ return new class extends Migration
             $table->enum('type', ['normal', 'vip'])->default('normal');
             $table->enum('status', ['available', 'booked'])->default('available');
             $table->decimal('price', 10, 2)->default(0);
+            $table->timestamps();
 
-            $table->index('room_id');
             $table->foreign('room_id')->references('id')->on('rooms')->onDelete('cascade');
         });
     }

@@ -20,8 +20,8 @@ class Seat extends Model
     ];
 
     // Quan hệ ngược tới showtime
-    public function showtime()
+    public function room()
     {
-        return $this->belongsTo(Showtime::class);
+        return $this->belongsTo(Room::class);
     }
 }
