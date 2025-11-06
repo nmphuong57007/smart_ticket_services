@@ -3,12 +3,23 @@
 namespace App\Http\Services\Seat;
 
 use App\Models\Seat;
+use App\Models\SeatReservation;
 
 class SeatService
 {
+    /**
+     * Lấy danh sách ghế với filter & pagination
+     *
+     * @param array $filters
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
     public function getSeats(array $filters = [])
     {
-        $query = Seat::with('room');
+        $query = Seat::with(['room', 'cinema']);
+
+        if (!empty($filters['cinema_id'])) {
+            $query->where('cinema_id', $filters['cinema_id']);
+        }
 
         if (!empty($filters['room_id'])) {
             $query->where('room_id', $filters['room_id']);
@@ -29,37 +40,37 @@ class SeatService
         return $query->paginate($filters['per_page'] ?? 10);
     }
 
+    /**
+     * Lấy thông tin ghế theo ID
+     */
     public function getSeatById(int $id): ?Seat
     {
-        return Seat::with('room')->find($id);
+        return Seat::with(['room', 'cinema'])->find($id);
     }
 
+    /**
+     * Tạo mới ghế
+     */
     public function createSeat(array $data): Seat
     {
         return Seat::create($data);
     }
 
+    /**
+     * Cập nhật ghế
+     */
     public function updateSeat(Seat $seat, array $data): Seat
     {
         $seat->update($data);
         return $seat;
     }
 
+    /**
+     * Xóa ghế
+     */
     public function deleteSeat(Seat $seat): bool
     {
         return $seat->delete();
     }
-    public function getSeatsWithReservationStatus(int $roomId, int $showtimeId)
-    {
-        return Seat::where('room_id', $roomId)
-            ->with(['reservations' => function ($q) use ($showtimeId) {
-                $q->where('showtime_id', $showtimeId);
-            }])
-            ->get()
-            ->map(function ($seat) {
-                $reservation = $seat->reservations->first();
-                $seat->current_status = $reservation->status ?? 'available';
-                return $seat;
-            });
-    }
+
 }

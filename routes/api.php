@@ -169,23 +169,9 @@ Route::prefix('seats')->group(function () {
     });
 });
 
-// Seat Reservation routes
-Route::prefix('seat-reservations')->middleware('api.auth')->group(function () {
-    // Lấy danh sách ghế theo suất chiếu (public hoặc customer đều có thể xem)
-    Route::get('/showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
-        ->name('seat-reservations.showtime');
-
-    // Giữ ghế tạm thời (chỉ cho người dùng đăng nhập, thường là customer)
-    Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])
-        ->middleware('role:customer,admin,staff')
-        ->name('seat-reservations.reserve');
-
-    // Xác nhận đặt ghế (sau khi thanh toán)
-    Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])
-        ->middleware('role:customer,admin,staff')
-        ->name('seat-reservations.confirm');
-    // Hủy giữ ghế
-    Route::post('/release', [SeatReservationController::class, 'releaseSeats'])
-        ->middleware('role:customer,admin,staff')
-        ->name('seat-reservations.release');
+// Protected routes: phải login
+Route::middleware(['api.auth', 'role:customer,admin,staff'])->prefix('seat-reservations')->group(function () {
+    Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
+    Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
+    Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
 });
