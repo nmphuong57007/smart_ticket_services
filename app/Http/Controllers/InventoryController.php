@@ -2,95 +2,108 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Product;
-use App\Models\InventoryTransaction;
+use App\Models\InventoryTransaction; // Đã sử dụng Model chính xác
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Auth; // Đã thêm để đảm bảo Auth hoạt động
 
 class InventoryController extends Controller
 {
     /**
-     * Xem danh sách tồn kho
+     * GET /admin/fb/inventory
+     * 1. Xem danh sách tồn kho hiện tại của tất cả sản phẩm.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::select('id', 'name', 'stock', 'price')
-            ->orderBy('name')
-            ->get();
+        $products = Product::select('id', 'name', 'stock')
+            ->orderBy('name', 'asc')
+            ->paginate(20);
 
-        return response([
+        return response()->json([
             'success' => true,
-            'message' => 'Danh sách tồn kho sản phẩm.',
+            'message' => 'Danh sách tồn kho hiện tại.',
             'data' => $products
-        ], 200);
+        ]);
     }
 
     /**
-     * Điều chỉnh tồn kho (nhập / xuất / chỉnh sửa)
+     * POST /admin/fb/inventory/{id}/adjust
+     * 2. Điều chỉnh tồn kho (nhập/xuất) cho một sản phẩm.
      */
-    public function adjust(Request $request, $id)
+    public function adjust(Request $request, $product_id)
     {
+        // 1. Validation
         $request->validate([
-            'change' => 'required|integer|not_in:0',
-            'type' => 'required|in:purchase,sale,adjustment,return,manual',
-            'note' => 'nullable|string|max:255'
+            'change' => 'required|numeric|min:1',
+            'type' => 'required|string|in:sale,purchase,adjustment,return',
+            'reference' => 'nullable|string|max:255',
+            'note' => 'nullable|string',
         ]);
 
-        $product = Product::find($id);
-        if (!$product) {
-            return response([
-                'success' => false,
-                'message' => 'Sản phẩm không tồn tại.'
-            ], 404);
-        }
+        // 2. Bắt đầu Transaction để đảm bảo tính toàn vẹn
+        DB::beginTransaction();
 
-        DB::transaction(function () use ($product, $request) {
-            $product->stock += $request->change;
-            if ($product->stock < 0) {
-                $product->stock = 0;
+        try {
+            $product = Product::findOrFail($product_id);
+
+            $change_amount = $request->input('change');
+            $operation_type = $request->input('type');
+
+            $actual_change = ($operation_type === 'export') ? -$change_amount : $change_amount;
+
+            // Kiểm tra tồn kho âm
+            if ($operation_type === 'export' && ($product->stock + $actual_change) < 0) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Lỗi: Không đủ tồn kho để xuất.'], 400);
             }
-            $product->save();
 
+            // 3. Cập nhật tồn kho hiện tại
+            $product->increment('stock', $actual_change);
+
+            // 4. Ghi lại bản ghi giao dịch (Transaction)
             InventoryTransaction::create([
-                'product_id' => $product->id,
-                'change' => $request->change,
-                'type' => $request->type,
-                'note' => $request->note,
-                'created_by' => auth()->id() ?? null,
+                'product_id' => $product_id,
+                'change' => $actual_change,
+                'type' => $operation_type,
+                'reference' => $request->input('reference'),
+                'note' => $request->input('note'),
+                // Ghi lại ID người dùng đã đăng nhập.
+                'created_by' => Auth::check() ? Auth::id() : null,
+                'created_at' => now(),
             ]);
-        });
 
-        return response([
-            'success' => true,
-            'message' => 'Cập nhật tồn kho thành công.',
-            'data' => $product
-        ], 200);
+            // 5. Commit Transaction
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Điều chỉnh tồn kho thành công.',
+                'new_stock' => $product->fresh()->stock
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Bạn có thể log $e->getMessage() ở đây để debug lỗi server
+            return response()->json(['success' => false, 'message' => 'Lỗi điều chỉnh tồn kho.'], 500);
+        }
     }
 
     /**
-     * Xem lịch sử tồn kho của 1 sản phẩm
+     * GET /admin/fb/inventory/{id}/history
+     * 3. Xem lịch sử thay đổi tồn kho của một sản phẩm.
      */
-    public function history($id)
+    public function history(Request $request, $product_id)
     {
-        $product = Product::find($id);
-        if (!$product) {
-            return response([
-                'success' => false,
-                'message' => 'Sản phẩm không tồn tại.'
-            ], 404);
-        }
+        // Truy vấn bảng giao dịch theo product_id
+        $history = InventoryTransaction::where('product_id', $product_id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(50);
 
-        $transactions = InventoryTransaction::where('product_id', $id)
-            ->orderByDesc('created_at')
-            ->get();
-
-        return response([
+        return response()->json([
             'success' => true,
-            'message' => 'Lịch sử tồn kho sản phẩm.',
-            'data' => [
-                'product' => $product,
-                'transactions' => $transactions
-            ]
-        ], 200);
+            'message' => 'Lịch sử tồn kho của sản phẩm ID: ' . $product_id,
+            'data' => $history
+        ]);
     }
 }

@@ -32,8 +32,9 @@ return new class extends Migration
         });
 
         Schema::table('seats', function (Blueprint $table) {
-            $table->foreign('showtime_id')->references('id')->on('showtimes')->onDelete('cascade');
+            // $table->foreign('room_id')->references('id')->on('rooms')->onDelete('cascade');
         });
+
 
         Schema::table('payments', function (Blueprint $table) {
             $table->foreign('booking_id')->references('id')->on('bookings');
