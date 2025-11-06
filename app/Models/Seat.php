@@ -9,7 +9,7 @@ class Seat extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'room_id',
@@ -18,6 +18,11 @@ class Seat extends Model
         'status',
         'price'
     ];
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
 
     // Quan hệ ngược tới showtime
     public function room()
