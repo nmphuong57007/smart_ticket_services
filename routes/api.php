@@ -158,20 +158,35 @@ Route::prefix('rooms')->group(function () {
 // Seat routes
 Route::prefix('seats')->group(function () {
     // Public (ai cũng có thể xem ghế)
-    Route::get('/', [SeatController::class, 'index']);           // Danh sách ghế (có filter room_id, type, status)
+    Route::get('/',     [SeatController::class, 'index']);           // Danh sách ghế (có filter room_id, type, status)
     Route::get('/{id}', [SeatController::class, 'show'])->whereNumber('id'); // Chi tiết 1 ghế
+
+    // ghế theo phòng và theo lịch chiếu
+    Route::get('/by-room/{roomId}',         [SeatController::class, 'getSeatsByRoom'])->whereNumber('roomId');
+    Route::get('/by-showtime/{showtimeId}', [SeatController::class, 'getSeatsByShowtime'])->whereNumber('showtimeId');
 
     // Admin only (CRUD)
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
-        Route::post('/', [SeatController::class, 'store']);      // Tạo ghế mới
-        Route::put('/{id}', [SeatController::class, 'update']);  // Cập nhật ghế
+        Route::post('/',       [SeatController::class, 'store']);      // Tạo ghế mới
+        Route::put('/{id}',    [SeatController::class, 'update']);  // Cập nhật ghế
         Route::delete('/{id}', [SeatController::class, 'destroy']); // Xóa ghế
+
+        // đổi trạng thái ghế
+        Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
     });
 });
 
 // Protected routes: phải login
-Route::middleware(['api.auth', 'role:customer,admin,staff'])->prefix('seat-reservations')->group(function () {
-    Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
-    Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
-    Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
+Route::middleware(['api.auth', 'role:customer,admin,staff'])
+    ->prefix('seat-reservations')->group(function () {
+        Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
+        Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
+        Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
+
+        // Xem lịch sử đặt ghế của user
+        Route::get('/my-reservations', [SeatReservationController::class, 'myReservations'])->name('seat-reservations.my');
+        // Danh sách ghế theo suất chiếu
+        Route::get('/by-showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
+            ->whereNumber('showtimeId')
+            ->name('seat-reservations.by-showtime');
 });

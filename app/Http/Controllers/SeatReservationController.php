@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use App\Http\Requests\SeatReservation\ConfirmSeatRequest;
 use App\Http\Requests\SeatReservation\ReleaseSeatRequest;
 use App\Http\Requests\SeatReservation\ReserveSeatRequest;
@@ -20,25 +20,38 @@ class SeatReservationController extends Controller
         $this->service = $service;
     }
 
+    /**
+     * Lấy danh sách ghế theo suất chiếu kèm trạng thái
+     */
     public function getSeatsByShowtime(int $showtimeId): JsonResponse
     {
         $data = $this->service->getSeatsByShowtime($showtimeId);
 
         return response()->json([
             'success' => true,
-            'data' => $data
+            'message' => 'Lấy danh sách ghế theo suất chiếu thành công.',
+            'data' => $data,
         ]);
     }
 
+    /**
+     * Giữ ghế tạm thời
+     */
     public function reserveSeats(ReserveSeatRequest $request): JsonResponse
     {
-        $userId = Auth::id();
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn cần đăng nhập để giữ ghế.',
+            ], 401);
+        }
 
         try {
             $seats = $this->service->reserveSeats(
                 $request->showtime_id,
                 $request->seat_ids,
-                $userId
+                $user->id
             );
 
             return response()->json([
@@ -54,12 +67,24 @@ class SeatReservationController extends Controller
         }
     }
 
+    /**
+     * Xác nhận đặt ghế
+     */
     public function confirmBooking(ConfirmSeatRequest $request): JsonResponse
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn cần đăng nhập để xác nhận đặt ghế.',
+            ], 401);
+        }
+
         try {
             $seats = $this->service->confirmBooking(
                 $request->showtime_id,
-                $request->seat_ids
+                $request->seat_ids,
+                $user->id
             );
 
             return response()->json([
@@ -75,21 +100,31 @@ class SeatReservationController extends Controller
         }
     }
 
+    /**
+     * Hủy giữ ghế
+     */
     public function releaseSeats(ReleaseSeatRequest $request): JsonResponse
     {
-        $userId = Auth::id();
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn cần đăng nhập để hủy giữ ghế.',
+            ], 401);
+        }
 
         try {
-            $seats = $this->service->releaseSeats(
+            $result = $this->service->releaseSeats(
                 $request->showtime_id,
                 $request->seat_ids,
-                $userId
+                $user->id
             );
 
             return response()->json([
-                'success' => true,
-                'message' => "Hủy giữ ghế thành công.",
-                'data' => SeatReservationResource::collection($seats),
+                'success' => $result['success'],
+                'message' => $result['message'],
+                'data' => SeatReservationResource::collection($result['released_seats']),
+                'failed_seat_ids' => $result['failed_seat_ids'],
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -97,5 +132,41 @@ class SeatReservationController extends Controller
                 'message' => $e->getMessage(),
             ], 409);
         }
+    }
+
+    /**
+     * Lấy danh sách đặt ghế của user hiện tại
+     */
+    public function myReservations(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn cần đăng nhập để xem đặt chỗ của mình.',
+            ], 401);
+        }
+
+        $reservations = $this->service->getMyReservations($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách đặt chỗ của bạn thành công.',
+            'data' => SeatReservationResource::collection($reservations),
+        ]);
+    }
+
+    /**
+     * Lấy thống kê ghế theo suất chiếu
+     */
+    public function seatStats(int $showtimeId): JsonResponse
+    {
+        $stats = $this->service->getSeatStats($showtimeId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy thống kê ghế theo suất chiếu thành công.',
+            'data' => $stats,
+        ]);
     }
 }

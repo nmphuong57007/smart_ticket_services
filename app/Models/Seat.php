@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Seat extends Model
 {
@@ -25,10 +24,12 @@ class Seat extends Model
         'updated_at' => 'datetime',
     ];
 
-    const STATUS_AVAILABLE = 'available';
-    const STATUS_RESERVED  = 'reserved';
-    const STATUS_BOOKED    = 'booked';
-    const RESERVED_TIMEOUT = 10; // phút
+    // Trạng thái ghế
+    public const STATUS_AVAILABLE = 'available';
+    public const STATUS_RESERVED  = 'reserved';
+    public const STATUS_BOOKED    = 'booked';
+
+    public const RESERVED_TIMEOUT = 10; // phút
 
     // Relationships
     public function room()
@@ -48,38 +49,46 @@ class Seat extends Model
 
     /**
      * Trạng thái hiện tại của ghế
-     * Nếu đã eager load reservations, dùng collection -> tránh query lại DB
      */
     public function getCurrentStatusAttribute(): string
     {
         $timeout = now()->subMinutes(self::RESERVED_TIMEOUT);
 
-        if ($this->relationLoaded('reservations')) {
-            $active = $this->reservations->filter(function ($r) use ($timeout) {
-                return $r->status === self::STATUS_BOOKED
-                    || ($r->status === self::STATUS_RESERVED && $r->reserved_at > $timeout);
-            })->sortByDesc('reserved_at')->first();
+        $reservation = $this->reservations
+            ->where('status', self::STATUS_BOOKED)
+            ->first()
+            ?? $this->reservations
+                ->where('status', self::STATUS_RESERVED)
+                ->where('reserved_at', '>', $timeout)
+                ->first();
 
-            return $active->status ?? self::STATUS_AVAILABLE;
-        }
+        return $reservation ? $reservation->status : self::STATUS_AVAILABLE;
+    }
 
-        // Nếu chưa eager load, query trực tiếp
+    /**
+     * Trạng thái ghế cho 1 suất chiếu cụ thể
+     */
+    public function getStatusForShowtime(int $showtimeId): string
+    {
+        $timeout = now()->subMinutes(self::RESERVED_TIMEOUT);
+
         $reservation = $this->reservations()
+            ->where('showtime_id', $showtimeId)
             ->where(function ($q) use ($timeout) {
                 $q->where('status', self::STATUS_BOOKED)
-                    ->orWhere(function ($q2) use ($timeout) {
-                        $q2->where('status', self::STATUS_RESERVED)
-                            ->where('reserved_at', '>', $timeout);
-                    });
+                  ->orWhere(function ($q2) use ($timeout) {
+                      $q2->where('status', self::STATUS_RESERVED)
+                         ->where('reserved_at', '>', $timeout);
+                  });
             })
             ->latest('reserved_at')
             ->first();
 
-        return $reservation->status ?? self::STATUS_AVAILABLE;
+        return $reservation ? $reservation->status : self::STATUS_AVAILABLE;
     }
 
     /**
-     * Scope eager load reservation còn hiệu lực
+     * Scope: eager load reservation còn hiệu lực
      */
     public function scopeWithActiveReservation($query)
     {
@@ -87,10 +96,10 @@ class Seat extends Model
 
         return $query->with(['reservations' => function ($q) use ($timeout) {
             $q->where('status', self::STATUS_BOOKED)
-                ->orWhere(function ($q2) use ($timeout) {
-                    $q2->where('status', self::STATUS_RESERVED)
-                        ->where('reserved_at', '>', $timeout);
-                });
+              ->orWhere(function ($q2) use ($timeout) {
+                  $q2->where('status', self::STATUS_RESERVED)
+                     ->where('reserved_at', '>', $timeout);
+              });
         }]);
     }
 }

@@ -4,7 +4,7 @@ namespace App\Http\Requests\SeatReservation;
 
 use Illuminate\Foundation\Http\FormRequest;
 use App\Models\SeatReservation;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon; 
 
 class ConfirmSeatRequest extends FormRequest
 {

@@ -3,9 +3,6 @@
 namespace App\Http\Requests\SeatReservation;
 
 use Illuminate\Foundation\Http\FormRequest;
-use App\Models\SeatReservation;
-use Illuminate\Support\Facades\Auth;
-
 
 class ReleaseSeatRequest extends FormRequest
 {
@@ -19,8 +16,8 @@ class ReleaseSeatRequest extends FormRequest
     {
         return [
             'showtime_id' => ['required', 'exists:showtimes,id'],
-            'seat_ids' => ['required', 'array', 'min:1'],
-            'seat_ids.*' => ['distinct', 'exists:seats,id'],
+            'seat_ids'    => ['required', 'array', 'min:1'],
+            'seat_ids.*'  => ['distinct', 'exists:seats,id'],
         ];
     }
 
@@ -35,35 +32,5 @@ class ReleaseSeatRequest extends FormRequest
             'seat_ids.*.distinct'  => 'Có ghế bị trùng trong danh sách.',
             'seat_ids.*.exists'    => 'Một hoặc nhiều ghế không hợp lệ.',
         ];
-    }
-
-    public function withValidator($validator)
-    {
-        $validator->after(function ($validator) {
-            $showtimeId = $this->input('showtime_id');
-            $seatIds = $this->input('seat_ids', []);
-        $userId = Auth::id();
-
-            if (empty($showtimeId) || empty($seatIds)) {
-                return;
-            }
-
-            // Kiểm tra xem ghế có đang ở trạng thái reserved bởi user này không
-            $invalidSeats = SeatReservation::where('showtime_id', $showtimeId)
-                ->whereIn('seat_id', $seatIds)
-                ->where(function ($q) use ($userId) {
-                    $q->where('status', '!=', 'reserved')
-                        ->orWhere('user_id', '!=', $userId);
-                })
-                ->pluck('seat_id')
-                ->toArray();
-
-            if (!empty($invalidSeats)) {
-                $validator->errors()->add(
-                    'seat_ids',
-                    'Một hoặc nhiều ghế không thể hủy vì chúng không ở trạng thái giữ hoặc không thuộc về bạn.'
-                );
-            }
-        });
     }
 }
