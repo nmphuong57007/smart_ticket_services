@@ -13,7 +13,7 @@ class SeatReservationResource extends JsonResource
             'showtime_id'  => $this->showtime_id,
             'seat'         => $this->seat ? new SeatResource($this->seat) : null,
             'user_id'      => $this->user_id,
-            'status'       => $this->status ?? 'available',
+            'status'       => $this->status ?? \App\Models\Seat::STATUS_AVAILABLE,
             'reserved_at'  => $this->reserved_at?->format('Y-m-d H:i:s'),
             'booked_at'    => $this->booked_at?->format('Y-m-d H:i:s'),
             'created_at'   => $this->created_at?->format('Y-m-d H:i:s'),

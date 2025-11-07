@@ -9,6 +9,7 @@ use App\Http\Requests\SeatReservation\ConfirmSeatRequest;
 use App\Http\Requests\SeatReservation\ReleaseSeatRequest;
 use App\Http\Requests\SeatReservation\ReserveSeatRequest;
 use App\Http\Services\SeatReservation\SeatReservationService;
+use App\Http\Resources\SeatReservationResource;
 
 class SeatReservationController extends Controller
 {
@@ -22,7 +23,11 @@ class SeatReservationController extends Controller
     public function getSeatsByShowtime(int $showtimeId): JsonResponse
     {
         $data = $this->service->getSeatsByShowtime($showtimeId);
-        return response()->json(['success' => true, 'data' => $data]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
     }
 
     public function reserveSeats(ReserveSeatRequest $request): JsonResponse
@@ -39,7 +44,7 @@ class SeatReservationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Giữ ghế thành công. Ghế sẽ được giữ trong 10 phút.',
-                'data' => $seats, // trả về danh sách ghế vừa giữ
+                'data' => SeatReservationResource::collection($seats),
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -60,7 +65,7 @@ class SeatReservationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Xác nhận đặt ghế thành công!',
-                'data' => $seats, // trả về danh sách ghế vừa đặt
+                'data' => SeatReservationResource::collection($seats),
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -84,7 +89,7 @@ class SeatReservationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Hủy giữ ghế thành công.",
-                'data' => $seats, // trả về danh sách ghế vừa hủy
+                'data' => SeatReservationResource::collection($seats),
             ]);
         } catch (Exception $e) {
             return response()->json([

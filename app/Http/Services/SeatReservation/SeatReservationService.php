@@ -14,15 +14,22 @@ class SeatReservationService
     private int $reservationTimeout = 10; // phút
 
     /**
-     * Lấy danh sách ghế kèm trạng thái
+     * Lấy danh sách ghế theo suất chiếu kèm trạng thái
      */
     public function getSeatsByShowtime(int $showtimeId)
     {
         $showtime = Showtime::with('seats')->findOrFail($showtimeId);
         $seats = $showtime->seats;
 
-        $reserved = SeatReservation::active($this->reservationTimeout)
-            ->where('showtime_id', $showtimeId)
+        // Lấy trạng thái đang active (reserved chưa hết hạn) hoặc booked
+        $reserved = SeatReservation::where('showtime_id', $showtimeId)
+            ->where(function ($q) {
+                $q->where('status', 'booked')
+                    ->orWhere(function ($q2) {
+                        $q2->where('status', 'reserved')
+                            ->where('reserved_at', '>', now()->subMinutes($this->reservationTimeout));
+                    });
+            })
             ->pluck('status', 'seat_id')
             ->toArray();
 
@@ -36,7 +43,7 @@ class SeatReservationService
     }
 
     /**
-     * Giữ ghế tạm thời và trả về data ghế
+     * Giữ ghế tạm thời
      */
     public function reserveSeats(int $showtimeId, array $seatIds, ?int $userId = null)
     {
@@ -48,86 +55,86 @@ class SeatReservationService
 
             foreach ($seatIds as $seatId) {
                 if (!in_array($seatId, $validSeatIds)) {
-                    throw new Exception("Ghế ID {$seatId} không thuộc phòng của suất chiếu này.");
+                    throw new Exception("Ghế ID {$seatId} không thuộc phòng.");
                 }
             }
 
-            $conflicts = SeatReservation::active($timeout)
-                ->where('showtime_id', $showtimeId)
+            // Kiểm tra xung đột
+            $conflicts = SeatReservation::where('showtime_id', $showtimeId)
                 ->whereIn('seat_id', $seatIds)
+                ->where(function ($q) use ($timeout) {
+                    $q->where('status', 'booked')
+                        ->orWhere(function ($q2) use ($timeout) {
+                            $q2->where('status', 'reserved')
+                                ->where('reserved_at', '>', now()->subMinutes($timeout));
+                        });
+                })
                 ->lockForUpdate()
                 ->exists();
 
             if ($conflicts) {
-                throw new Exception('Một số ghế đã được giữ hoặc đặt. Vui lòng chọn ghế khác.');
+                throw new Exception('Một số ghế đã được giữ hoặc đặt.');
             }
 
+            $seatReservations = [];
             foreach ($seatIds as $seatId) {
-                SeatReservation::updateOrCreate(
+                $seatReservations[] = SeatReservation::updateOrCreate(
                     ['showtime_id' => $showtimeId, 'seat_id' => $seatId],
-                    ['user_id' => $userId, 'status' => 'reserved', 'reserved_at' => Carbon::now(), 'booked_at' => null]
+                    [
+                        'user_id' => $userId,
+                        'status' => 'reserved',
+                        'reserved_at' => now(),
+                        'booked_at' => null
+                    ]
                 );
             }
 
-            // Trả về data ghế vừa giữ
-            return Seat::whereIn('id', $seatIds)
-                ->get()
-                ->map(fn($seat) => [
-                    'id' => $seat->id,
-                    'seat_code' => $seat->seat_code,
-                    'type' => $seat->type,
-                    'price' => $seat->price,
-                    'status' => 'reserved',
-                ]);
+            return SeatReservation::whereIn('id', array_map(fn($s) => $s->id, $seatReservations))
+                ->with('seat')
+                ->get();
         });
     }
 
     /**
-     * Xác nhận đặt ghế và trả về data ghế
+     * Xác nhận đặt ghế
      */
-    public function confirmBooking(int $showtimeId, array $seatIds)
+    public function confirmBooking(int $showtimeId, array $seatIds, ?int $userId = null)
     {
         $timeout = $this->reservationTimeout;
 
-        $expiredSeats = SeatReservation::where('showtime_id', $showtimeId)
-            ->whereIn('seat_id', $seatIds)
-            ->where('status', 'reserved')
-            ->where('reserved_at', '<', Carbon::now()->subMinutes($timeout))
-            ->pluck('seat_id')
-            ->toArray();
+        return DB::transaction(function () use ($showtimeId, $seatIds, $userId, $timeout) {
+            $seatReservations = [];
 
-        if (!empty($expiredSeats)) {
-            throw new Exception('Một số ghế đã hết hạn giữ, vui lòng chọn lại.');
-        }
+            foreach ($seatIds as $seatId) {
+                $reservation = SeatReservation::firstOrNew([
+                    'showtime_id' => $showtimeId,
+                    'seat_id' => $seatId
+                ]);
 
-        SeatReservation::where('showtime_id', $showtimeId)
-            ->whereIn('seat_id', $seatIds)
-            ->update(['status' => 'booked', 'booked_at' => Carbon::now()]);
+                // Nếu ghế đã được reserved nhưng hết hạn, throw lỗi
+                if ($reservation->exists && $reservation->status === 'reserved' && $reservation->reserved_at < now()->subMinutes($timeout)) {
+                    throw new Exception("Ghế ID {$seatId} đã hết hạn giữ.");
+                }
 
-        // Trả về data ghế vừa đặt
-        return Seat::whereIn('id', $seatIds)
-            ->get()
-            ->map(fn($seat) => [
-                'id' => $seat->id,
-                'seat_code' => $seat->seat_code,
-                'type' => $seat->type,
-                'price' => $seat->price,
-                'status' => 'booked',
-            ]);
+                // Nếu ghế đã booked bởi người khác
+                if ($reservation->exists && $reservation->status === 'booked' && $reservation->user_id !== $userId) {
+                    throw new Exception("Ghế ID {$seatId} đã được đặt.");
+                }
+
+                $reservation->status = 'booked';
+                $reservation->booked_at = now();
+                $reservation->user_id = $userId ?? $reservation->user_id;
+                $reservation->save();
+
+                $seatReservations[] = $reservation->load('seat');
+            }
+
+            return collect($seatReservations);
+        });
     }
 
     /**
-     * Dọn ghế hết hạn giữ
-     */
-    public function releaseExpiredReservations(): int
-    {
-        return SeatReservation::where('status', 'reserved')
-            ->where('reserved_at', '<', Carbon::now()->subMinutes($this->reservationTimeout))
-            ->update(['status' => 'available', 'reserved_at' => null, 'user_id' => null]);
-    }
-
-    /**
-     * Hủy giữ ghế và trả về data ghế
+     * Hủy giữ ghế
      */
     public function releaseSeats(int $showtimeId, array $seatIds, ?int $userId = null)
     {
@@ -136,28 +143,24 @@ class SeatReservationService
                 ->whereIn('seat_id', $seatIds)
                 ->where('status', 'reserved');
 
-            if ($userId) $query->where('user_id', $userId);
+            if ($userId) {
+                $query->where('user_id', $userId);
+            }
 
             $updated = $query->update([
                 'status' => 'available',
                 'reserved_at' => null,
-                'user_id' => null,
+                'user_id' => null
             ]);
 
             if ($updated === 0) {
-                throw new Exception('Không có ghế nào có thể hủy hoặc ghế đã được đặt.');
+                throw new Exception('Không có ghế nào có thể hủy.');
             }
 
-            // Trả về data ghế vừa hủy
-            return Seat::whereIn('id', $seatIds)
-                ->get()
-                ->map(fn($seat) => [
-                    'id' => $seat->id,
-                    'seat_code' => $seat->seat_code,
-                    'type' => $seat->type,
-                    'price' => $seat->price,
-                    'status' => 'available',
-                ]);
+            return SeatReservation::where('showtime_id', $showtimeId)
+                ->whereIn('seat_id', $seatIds)
+                ->with('seat')
+                ->get();
         });
     }
 }

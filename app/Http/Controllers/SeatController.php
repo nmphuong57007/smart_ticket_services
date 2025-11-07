@@ -19,9 +19,6 @@ class SeatController extends Controller
         $this->service = $service;
     }
 
-    /**
-     * Lấy danh sách ghế (có filter & pagination)
-     */
     public function index(Request $request): JsonResponse
     {
         $filters = $request->only(['room_id', 'cinema_id', 'type', 'status', 'search', 'per_page']);
@@ -41,83 +38,35 @@ class SeatController extends Controller
         ]);
     }
 
-    /**
-     * Lấy chi tiết ghế theo ID
-     */
     public function show(int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
+        if (!$seat) return response()->json(['success' => false, 'message' => 'Không tìm thấy ghế'], Response::HTTP_NOT_FOUND);
 
-        if (!$seat) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy ghế'
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => new SeatResource($seat)
-        ]);
+        return response()->json(['success' => true, 'data' => new SeatResource($seat)]);
     }
 
-    /**
-     * Tạo mới ghế
-     */
     public function store(SeatStoreRequest $request): JsonResponse
     {
         $seat = $this->service->createSeat($request->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Tạo ghế thành công',
-            'data' => new SeatResource($seat),
-        ], Response::HTTP_CREATED);
+        return response()->json(['success' => true, 'message' => 'Tạo ghế thành công', 'data' => new SeatResource($seat)], Response::HTTP_CREATED);
     }
 
-    /**
-     * Cập nhật thông tin ghế
-     */
     public function update(SeatUpdateRequest $request, int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
-
-        if (!$seat) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy ghế'
-            ], Response::HTTP_NOT_FOUND);
-        }
+        if (!$seat) return response()->json(['success' => false, 'message' => 'Không tìm thấy ghế'], Response::HTTP_NOT_FOUND);
 
         $updated = $this->service->updateSeat($seat, $request->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cập nhật ghế thành công',
-            'data' => new SeatResource($updated)
-        ]);
+        return response()->json(['success' => true, 'message' => 'Cập nhật ghế thành công', 'data' => new SeatResource($updated)]);
     }
 
-    /**
-     * Xóa ghế
-     */
     public function destroy(int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
-
-        if (!$seat) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy ghế'
-            ], Response::HTTP_NOT_FOUND);
-        }
+        if (!$seat) return response()->json(['success' => false, 'message' => 'Không tìm thấy ghế'], Response::HTTP_NOT_FOUND);
 
         $this->service->deleteSeat($seat);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Xóa ghế thành công'
-        ]);
+        return response()->json(['success' => true, 'message' => 'Xóa ghế thành công']);
     }
-
 }
