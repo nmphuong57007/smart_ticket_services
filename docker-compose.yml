@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.render
     container_name: smart-ticket-app
     ports:
       - "8080:80"
