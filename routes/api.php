@@ -15,6 +15,9 @@ use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\SeatController;
+use App\Http\Controllers\SeatReservationController;
+
 
 use App\Http\Controllers\DiscountController;
 
@@ -146,7 +149,7 @@ Route::prefix('rooms')->group(function () {
     Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
         Route::get('/statistics', [RoomController::class, 'statistics']); // Thống kê tổng quan all phòng chiếu
         Route::get('/statistics-by-cinema', [RoomController::class, 'statisticsByCinema']); // Thống kê phòng chiếu theo rạp
-        Route::get('/statistics/cinema/{cinemaId}', [RoomController::class, 'statisticsByCinemaId'])->whereNumber('cinemaId');// Thống kê các phòng chiếu của một rạp cụ thể
+        Route::get('/statistics/cinema/{cinemaId}', [RoomController::class, 'statisticsByCinemaId'])->whereNumber('cinemaId'); // Thống kê các phòng chiếu của một rạp cụ thể
     });
 
     // Admin-only routes (toàn quyền CRUD)
@@ -156,4 +159,40 @@ Route::prefix('rooms')->group(function () {
         Route::patch('/{id}/status', [RoomController::class, 'changeStatus']); // Đổi trạng thái phòng
         Route::delete('/{id}', [RoomController::class, 'destroy']);      // Xóa phòng
     });
+});
+
+// Seat routes
+Route::prefix('seats')->group(function () {
+    // Public (ai cũng có thể xem ghế)
+    Route::get('/',     [SeatController::class, 'index']);           // Danh sách ghế (có filter room_id, type, status)
+    Route::get('/{id}', [SeatController::class, 'show'])->whereNumber('id'); // Chi tiết 1 ghế
+
+    // ghế theo phòng và theo lịch chiếu
+    Route::get('/by-room/{roomId}',         [SeatController::class, 'getSeatsByRoom'])->whereNumber('roomId');
+    Route::get('/by-showtime/{showtimeId}', [SeatController::class, 'getSeatsByShowtime'])->whereNumber('showtimeId');
+
+    // Admin only (CRUD)
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::post('/',       [SeatController::class, 'store']);      // Tạo ghế mới
+        Route::put('/{id}',    [SeatController::class, 'update']);  // Cập nhật ghế
+        Route::delete('/{id}', [SeatController::class, 'destroy']); // Xóa ghế
+
+        // đổi trạng thái ghế
+        Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
+    });
+});
+
+// Protected routes: phải login
+Route::middleware(['api.auth', 'role:customer,admin,staff'])
+    ->prefix('seat-reservations')->group(function () {
+        Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
+        Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
+        Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
+
+        // Xem lịch sử đặt ghế của user
+        Route::get('/my-reservations', [SeatReservationController::class, 'myReservations'])->name('seat-reservations.my');
+        // Danh sách ghế theo suất chiếu
+        Route::get('/by-showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
+            ->whereNumber('showtimeId')
+            ->name('seat-reservations.by-showtime');
 });
