@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Movie;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 class MovieFactory extends Factory
 {
@@ -22,8 +21,8 @@ class MovieFactory extends Factory
 
         return [
             'title' => $faker->sentence(3),
-            'poster' => 'ttps://picsum.photos/id/' . $faker->unique()->numberBetween(1, 9999) . '/400/600',
-            'trailer' => 'https://www.youtube.com/watch?v=' . Str::random(11),
+            'poster' => 'https://placehold.co/600x400',
+            'trailer' => 'https://www.youtube.com/watch?v=jCHv_mLCSJA',
             'description' => $faker->paragraph(5),
             'genre' => implode(', ', $chosenGenres),
             'duration' => $faker->numberBetween(90, 160),
