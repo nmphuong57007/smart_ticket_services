@@ -22,10 +22,6 @@ RUN curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/sha
   && apt-get install -y --no-install-recommends php8.2-fpm php8.2-cli php8.2-mbstring php8.2-xml php8.2-curl php8.2-mysql php8.2-zip php8.2-gd php8.2-bcmath php8.2-intl php8.2-opcache \
   && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 20 (for building front-end assets if present)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs npm \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
@@ -33,12 +29,9 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 WORKDIR /var/www/html
 
 # Copy composer files and install dependencies (cache layer)
-COPY composer.json composer.lock ./
+# Use a wildcard so it matches composer.json (and composer.lock if present)
+COPY composer.* ./
 RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction --no-progress || true; fi
-
-# Copy frontend package files and build if present
-COPY package*.json vite.config.js tsconfig.json ./
-RUN if [ -f package.json ]; then npm ci && npm run build || true; fi
 
 # Copy application source
 COPY . .
