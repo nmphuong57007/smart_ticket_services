@@ -18,7 +18,8 @@ WORKDIR /var/www/html
 
 # Copy composer files and install dependencies
 COPY composer.* ./
-RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction --no-progress || true; fi
+# Install PHP dependencies but skip composer scripts (they may call artisan which requires runtime env)
+RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts || true; fi
 
 # Copy application source
 COPY . .

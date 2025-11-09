@@ -17,7 +17,7 @@ WORKDIR /var/www/html
 
 # Copy composer files and install dependencies
 COPY composer.* ./
-RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction --no-progress || true; fi
+RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction --no-progress --no-scripts || true; fi
 
 # Copy application source
 COPY . .
