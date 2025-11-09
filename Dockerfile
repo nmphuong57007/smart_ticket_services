@@ -1,5 +1,5 @@
 # Dockerfile for Laravel application (single-container with nginx + php-fpm + supervisor)
-FROM ubuntu:24.04.3
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
