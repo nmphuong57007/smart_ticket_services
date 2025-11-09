@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smart-ticket-app
+    ports:
+      - "8080:80"
+    env_file: .env
+    environment:
+      APP_ENV: local
+      APP_DEBUG: 'true'
+    depends_on:
+      - db
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html
+      - ./logs:/var/log
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+
+  db:
+    image: mysql:8.0
+    container_name: smart-ticket-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: smart_ticket
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+volumes:
+  db_data:
+  logs:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

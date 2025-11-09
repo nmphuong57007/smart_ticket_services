@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: smart-ticket-app
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: standard
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: 'false'
+      # Set APP_KEY in the Render dashboard secrets instead of here
+      # - key: APP_KEY
+      #   value: ""
+      # Database and other secrets must be set in the Render dashboard
+      # - key: DB_HOST
+      #   value: internal-postgres:5432
+    healthCheckPath: /health
+    healthCheckInterval: 30
+    headers:
+      - name: X-Robots-Tag
+        value: noindex
