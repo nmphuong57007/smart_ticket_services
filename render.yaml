@@ -2,7 +2,7 @@ services:
   - type: web
     name: smart-ticket-app
     env: docker
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile.render
     plan: standard
     scaling:
       minInstances: 1
