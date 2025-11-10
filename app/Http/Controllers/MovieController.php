@@ -36,7 +36,7 @@ class MovieController extends Controller
                 'genre' => $request->query('genre'),
                 'language' => $request->query('language'), // ✅ filter thêm theo ngôn ngữ
                 'sort_by' => $request->query('sort_by', 'id'),
-                'sort_order' => $request->query('sort_order', 'desc'),
+                'sort_order' => $request->query('sort_order', 'asc'),
                 'per_page' => $request->query('per_page', 15)
             ];
 
