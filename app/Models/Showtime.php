@@ -33,8 +33,16 @@ class Showtime extends Model
         return $this->belongsTo(Room::class);
     }
 
+    // Lấy ghế thông qua phòng chiếu
     public function seats()
     {
-        return $this->hasMany(Seat::class);
+        return $this->hasManyThrough(
+            Seat::class,   // Model cuối cùng
+            Room::class,   // Model trung gian
+            'id',          // khóa chính ở Room (Room.id)
+            'room_id',     // khóa ngoại ở Seat (Seat.room_id)
+            'room_id',     // khóa ngoại ở Showtime (Showtime.room_id)
+            'id'           // khóa chính ở Room (Room.id)
+        );
     }
 }

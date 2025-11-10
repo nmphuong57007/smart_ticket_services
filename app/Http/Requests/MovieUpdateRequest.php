@@ -8,7 +8,9 @@ class MovieUpdateRequest extends FormRequest
 {
     public function authorize()
     {
+
         return $this->user() && in_array($this->user()->role, ['admin', 'staff']);
+
     }
 
     public function rules(): array
@@ -19,14 +21,17 @@ class MovieUpdateRequest extends FormRequest
             'trailer'       => 'sometimes|nullable|url',
             'description'   => 'sometimes|nullable|string',
 
+
             // Thay thế 'genre' bằng mảng ID thể loại
             'genre_ids'     => 'nullable|array',
             'genre_ids.*'   => 'integer|exists:genres,id',
+
 
             'duration'      => 'sometimes|nullable|integer|min:1',
             'format'        => 'sometimes|nullable|string|max:50',
             'language'      => 'sometimes|nullable|in:dub,sub,narrated',
             'release_date'  => 'sometimes|nullable|date',
+
             'end_date' => [
                 'nullable',
                 'date',
@@ -37,6 +42,7 @@ class MovieUpdateRequest extends FormRequest
                     }
                 }
             ],
+
             'status'        => 'sometimes|nullable|in:coming,showing,stopped',
         ];
     }
