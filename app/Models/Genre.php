@@ -10,6 +10,14 @@ class Genre extends Model
     use HasFactory;
 
     protected $fillable = ['name', 'is_active'];
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
 
     public function movies()
     {

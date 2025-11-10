@@ -63,9 +63,7 @@ class MovieService
     {
         return DB::transaction(function () use ($movie, $data) {
             $movie->update($data);
- CRUD-phim-trangthaiphim
             return $movie->fresh('genres');
-
         });
     }
 

@@ -36,7 +36,7 @@ class MovieResource extends JsonResource
                 ? Carbon::parse($this->updated_at)->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s')
                 : null,
 
-            // 🔹 Thêm thể loại (genres)
+            // thể loại (genres)
             'genres' => $this->whenLoaded('genres', function () {
                 return $this->genres->map(function ($genre) {
                     return [
