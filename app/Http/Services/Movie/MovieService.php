@@ -17,7 +17,7 @@ class MovieService
         $sortBy = $filters['sort_by'] ?? 'id';
         $sortOrder = $filters['sort_order'] ?? 'desc';
 
-        return Movie::with('genres') // 🔹 load sẵn thể loại để tránh lỗi load() ở Controller
+        return Movie::with('genres') // load sẵn thể loại để tránh lỗi load() ở Controller
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
@@ -27,7 +27,7 @@ class MovieService
             ->when($filters['status'] ?? null, fn($query, $status) => $query->where('status', $status))
             ->when($filters['language'] ?? null, fn($query, $language) => $query->where('language', $language))
             ->when($filters['genre_id'] ?? null, function ($query, $genreId) {
-                // 🔹 Lọc phim theo thể loại qua bảng pivot
+                // Lọc phim theo thể loại qua bảng pivot
                 $query->whereHas('genres', fn($q) => $q->where('genres.id', $genreId));
             })
             ->orderBy($sortBy, $sortOrder)
@@ -110,13 +110,13 @@ class MovieService
     public function getMovieStatistics(): array
     {
         return [
-            // 🔹 Thống kê tổng quan
+            // Thống kê tổng quan
             'total_movies'   => Movie::count(),
             'showing_movies' => Movie::where('status', 'showing')->count(),
             'coming_movies'  => Movie::where('status', 'coming')->count(),
             'stopped_movies' => Movie::where('status', 'stopped')->count(),
 
-            // 🔹 Thống kê theo thể loại
+            // Thống kê theo thể loại
             'movies_by_genre' => DB::table('movie_genre')
                 ->join('genres', 'movie_genre.genre_id', '=', 'genres.id')
                 ->select('genres.name', DB::raw('COUNT(movie_genre.movie_id) as count'))
@@ -124,12 +124,12 @@ class MovieService
                 ->pluck('count', 'genres.name')
                 ->toArray(),
 
-            // 🔹 Toàn bộ phim (đầy đủ cột, có thể loại)
+            // Toàn bộ phim (đầy đủ cột, có thể loại)
             'all_movies' => Movie::with('genres')
                 ->orderBy('created_at', 'desc')
                 ->get(),
 
-            // 🔹 5 phim mới nhất (đầy đủ cột, có thể loại)
+            // 5 phim mới nhất (đầy đủ cột, có thể loại)
             'recent_movies' => Movie::with('genres')
                 ->latest('created_at')
                 ->limit(5)
