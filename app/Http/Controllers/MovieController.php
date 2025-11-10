@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Services\Movie\MovieService;
-use App\Http\Validator\Movie\MovieFilterValidator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use App\Http\Resources\MovieResource;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\MovieStoreRequest;
 use App\Http\Requests\MovieUpdateRequest;
-use App\Http\Resources\MovieResource;
+use App\Http\Services\Movie\MovieService;
+use App\Http\Resources\MovieStatisticsResource;
+use App\Http\Validator\Movie\MovieFilterValidator;
 
 class MovieController extends Controller
 {
@@ -20,6 +22,7 @@ class MovieController extends Controller
         $this->movieService = $movieService;
         $this->movieFilterValidator = $movieFilterValidator;
     }
+
 
     // Lấy danh sách phim (filter + phân trang)
     public function index(Request $request)
@@ -33,13 +36,14 @@ class MovieController extends Controller
             $filters = [
                 'search' => $request->query('search'),
                 'status' => $request->query('status'),
-                'genre' => $request->query('genre'),
-                'language' => $request->query('language'), // ✅ filter thêm theo ngôn ngữ
+                'genre_id' => $request->query('genre_id'),
+                'language' => $request->query('language'),
                 'sort_by' => $request->query('sort_by', 'id'),
                 'sort_order' => $request->query('sort_order', 'desc'),
-                'per_page' => $request->query('per_page', 15)
+                'per_page' => $request->query('per_page', 15),
             ];
 
+            // Lấy phim có load sẵn thể loại (từ MovieService)
             $movies = $this->movieService->getMovies($filters);
 
             return response([
@@ -53,7 +57,7 @@ class MovieController extends Controller
                         'per_page' => $movies->perPage(),
                         'total' => $movies->total(),
                         'from' => $movies->firstItem(),
-                        'to' => $movies->lastItem()
+                        'to' => $movies->lastItem(),
                     ]
                 ]
             ]);
@@ -66,11 +70,12 @@ class MovieController extends Controller
         }
     }
 
+
     // Lấy chi tiết phim
     public function show($id)
     {
         try {
-            $movie = $this->movieService->getMovieById($id);
+            $movie = $this->movieService->getMovieById($id); // đã with('genres') trong service
             return response([
                 'success' => true,
                 'data' => new MovieResource($movie)
@@ -80,21 +85,29 @@ class MovieController extends Controller
         }
     }
 
+
     // Thêm phim mới
     public function store(MovieStoreRequest $request)
     {
         $data = $request->validated();
 
+        // Upload poster
         if ($request->hasFile('poster')) {
             $path = $request->file('poster')->store('posters', 'public');
             $data['poster'] = 'storage/' . $path;
         }
 
-        // Gán ngôn ngữ và ngày kết thúc (nếu có)
         $data['language'] = $request->input('language');
         $data['end_date'] = $request->input('end_date');
 
         $movie = $this->movieService->createMovie($data);
+
+        // Gán thể loại (checkbox)
+        if ($request->has('genre_ids')) {
+            $movie->genres()->sync($request->input('genre_ids'));
+        }
+
+        $movie->load('genres');
 
         return response([
             'success' => true,
@@ -102,6 +115,7 @@ class MovieController extends Controller
             'data' => new MovieResource($movie)
         ], 201);
     }
+
 
     // Cập nhật phim
     public function update(MovieUpdateRequest $request, $id)
@@ -114,6 +128,7 @@ class MovieController extends Controller
 
         $data = $request->validated();
 
+        // Upload lại poster nếu có
         if ($request->hasFile('poster')) {
             if ($movie->poster && str_contains($movie->poster, '/storage/')) {
                 $filePath = str_replace('storage/', '', $movie->poster);
@@ -121,12 +136,10 @@ class MovieController extends Controller
                     Storage::disk('public')->delete($filePath);
                 }
             }
-
             $path = $request->file('poster')->store('posters', 'public');
             $data['poster'] = 'storage/' . $path;
         }
 
-        // Cho phép cập nhật ngôn ngữ và ngày kết thúc
         if ($request->has('language')) {
             $data['language'] = $request->input('language');
         }
@@ -137,6 +150,13 @@ class MovieController extends Controller
 
         $updated = $this->movieService->updateMovie($movie, $data);
 
+        // Cập nhật lại thể loại
+        if ($request->has('genre_ids')) {
+            $movie->genres()->sync($request->input('genre_ids'));
+        }
+
+        $updated->load('genres');
+
         return response([
             'success' => true,
             'message' => 'Cập nhật phim thành công',
@@ -144,7 +164,8 @@ class MovieController extends Controller
         ]);
     }
 
-    // Xóa phim
+
+    // Xóa phim (kèm ảnh và thể loại liên kết)
     public function destroy($id)
     {
         try {
@@ -153,17 +174,28 @@ class MovieController extends Controller
             return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
         }
 
-        if ($movie->poster && str_contains($movie->poster, '/storage/')) {
-            $filePath = str_replace('storage/', '', $movie->poster);
+        //  Xóa poster an toàn
+        if ($movie->poster) {
+            $filePath = str_replace(['storage/', 'public/'], '', $movie->poster);
+
             if (Storage::disk('public')->exists($filePath)) {
                 Storage::disk('public')->delete($filePath);
+                Log::info("Đã xóa poster: {$filePath}");
+            } else {
+                Log::warning("Không tìm thấy tệp poster khi xóa phim: {$filePath}");
             }
         }
 
+        // Gỡ thể loại liên kết
+        $movie->genres()->detach();
+
+        // Xóa phim
         $this->movieService->deleteMovie($movie);
 
         return response(['success' => true, 'message' => 'Xóa phim thành công']);
     }
+
+
 
     // Cập nhật trạng thái phim
     public function changeStatus(Request $request, $id)
@@ -176,7 +208,9 @@ class MovieController extends Controller
             return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
         }
 
-        $updated = $this->movieService->updateMovie($movie, ['status' => $request->input('status')]);
+        $updated = $this->movieService->updateMovie($movie, [
+            'status' => $request->input('status')
+        ]);
 
         return response([
             'success' => true,
@@ -185,10 +219,15 @@ class MovieController extends Controller
         ]);
     }
 
+
     // Thống kê phim
     public function statistics()
     {
         $stats = $this->movieService->getMovieStatistics();
-        return response(['success' => true, 'data' => $stats]);
+        return response([
+            'success' => true,
+            'message' => 'Thống kê phim thành công',
+            'data' => new MovieStatisticsResource($stats)
+        ]);
     }
 }
