@@ -14,6 +14,7 @@ use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\GenreController;
 
 use App\Http\Controllers\DiscountController;
 // Public routes (no authentication required)
@@ -81,6 +82,22 @@ Route::prefix('movies')->group(function () {
         Route::delete('/{id}',       [MovieController::class, 'destroy']);      // Xóa phim
     });
 });
+
+// Genre routes (gộp public + admin)
+Route::prefix('genres')->group(function () {
+
+    // Public: xem danh sách thể loại khả dụng (hiển thị checkbox chọn phim)
+    Route::get('/public', [GenreController::class, 'indexPublic']);
+
+    // Admin-only: quản lý thể loại
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::get('/', [GenreController::class, 'index']);        // danh sách đầy đủ (kể cả ẩn)
+        Route::post('/', [GenreController::class, 'store']);       // thêm
+        Route::put('/{id}', [GenreController::class, 'update']);   // cập nhật
+        Route::delete('/{id}', [GenreController::class, 'destroy']); // xóa
+    });
+});
+
 
 
 // Showtime routes

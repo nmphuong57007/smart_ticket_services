@@ -17,7 +17,7 @@ class MovieService
         $sortBy = $filters['sort_by'] ?? 'id';
         $sortOrder = $filters['sort_order'] ?? 'desc';
 
-        return Movie::query()
+        return Movie::with('genres') // 🔹 load sẵn thể loại để tránh lỗi load() ở Controller
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
@@ -25,7 +25,11 @@ class MovieService
                 });
             })
             ->when($filters['status'] ?? null, fn($query, $status) => $query->where('status', $status))
-            ->when($filters['genre'] ?? null, fn($query, $genre) => $query->where('genre', 'like', "%{$genre}%"))
+            ->when($filters['language'] ?? null, fn($query, $language) => $query->where('language', $language))
+            ->when($filters['genre_id'] ?? null, function ($query, $genreId) {
+                // 🔹 Lọc phim theo thể loại qua bảng pivot
+                $query->whereHas('genres', fn($q) => $q->where('genres.id', $genreId));
+            })
             ->orderBy($sortBy, $sortOrder)
             ->paginate($filters['per_page'] ?? 15);
     }
@@ -35,7 +39,7 @@ class MovieService
      */
     public function getMovieById(int $id): Movie
     {
-        return Movie::findOrFail($id);
+        return Movie::with('genres')->findOrFail($id);
     }
 
     /**
@@ -55,7 +59,7 @@ class MovieService
     {
         return DB::transaction(function () use ($movie, $data) {
             $movie->update($data);
-            return $movie->fresh();
+            return $movie->fresh('genres');
         });
     }
 
@@ -74,15 +78,17 @@ class MovieService
      */
     public function getMoviesByStatus(string $status): Collection
     {
-        return Movie::where('status', $status)->get();
+        return Movie::with('genres')->where('status', $status)->get();
     }
 
     /**
-     * Lấy phim theo thể loại
+     * Lấy phim theo thể loại (nhiều-nhiều)
      */
-    public function getMoviesByGenre(string $genre): Collection
+    public function getMoviesByGenre(string $genreName): Collection
     {
-        return Movie::where('genre', 'like', "%{$genre}%")->get();
+        return Movie::with('genres')
+            ->whereHas('genres', fn($q) => $q->where('genres.name', 'like', "%{$genreName}%"))
+            ->get();
     }
 
     /**
@@ -90,10 +96,12 @@ class MovieService
      */
     public function searchMovies(string $search): Collection
     {
-        return Movie::where(function ($query) use ($search) {
-            $query->where('title', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%");
-        })->get();
+        return Movie::with('genres')
+            ->where(function ($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            })
+            ->get();
     }
 
     /**
@@ -102,17 +110,29 @@ class MovieService
     public function getMovieStatistics(): array
     {
         return [
-            'total_movies' => Movie::count(),
+            // 🔹 Thống kê tổng quan
+            'total_movies'   => Movie::count(),
             'showing_movies' => Movie::where('status', 'showing')->count(),
-            'coming_movies' => Movie::where('status', 'coming')->count(),
+            'coming_movies'  => Movie::where('status', 'coming')->count(),
             'stopped_movies' => Movie::where('status', 'stopped')->count(),
-            'movies_by_genre' => Movie::selectRaw('genre, COUNT(*) as count')
-                ->groupBy('genre')
-                ->pluck('count', 'genre')
+
+            // 🔹 Thống kê theo thể loại
+            'movies_by_genre' => DB::table('movie_genre')
+                ->join('genres', 'movie_genre.genre_id', '=', 'genres.id')
+                ->select('genres.name', DB::raw('COUNT(movie_genre.movie_id) as count'))
+                ->groupBy('genres.name')
+                ->pluck('count', 'genres.name')
                 ->toArray(),
-            'recent_movies' => Movie::latest('created_at')
+
+            // 🔹 Toàn bộ phim (đầy đủ cột, có thể loại)
+            'all_movies' => Movie::with('genres')
+                ->orderBy('created_at', 'desc')
+                ->get(),
+
+            // 🔹 5 phim mới nhất (đầy đủ cột, có thể loại)
+            'recent_movies' => Movie::with('genres')
+                ->latest('created_at')
                 ->limit(5)
-                ->select('id', 'title', 'status', 'release_date', 'created_at')
                 ->get(),
         ];
     }

@@ -22,7 +22,7 @@ class MovieFactory extends Factory
 
         return [
             'title' => $faker->sentence(3),
-            'poster' => 'ttps://picsum.photos/id/' . $faker->unique()->numberBetween(1, 9999) . '/400/600',
+            'poster' => 'https://picsum.photos/id/' . $faker->unique()->numberBetween(1, 9999) . '/400/600',
             'trailer' => 'https://www.youtube.com/watch?v=' . Str::random(11),
             'description' => $faker->paragraph(5),
             'genre' => implode(', ', $chosenGenres),
