@@ -6,6 +6,7 @@ use App\Models\Movie;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
+
 class MovieFactory extends Factory
 {
     protected $model = Movie::class;
@@ -22,11 +23,11 @@ class MovieFactory extends Factory
 
         return [
             'title' => $faker->sentence(3),
+
             'poster' => 'https://picsum.photos/id/' . $faker->unique()->numberBetween(1, 9999) . '/400/600',
             'trailer' => 'https://www.youtube.com/watch?v=' . Str::random(11),
 
             'description' => $faker->paragraph(5),
-            'genre' => implode(', ', $chosenGenres),
             'duration' => $faker->numberBetween(90, 160),
             'format' => $faker->randomElement($formats),
             'release_date' => $faker->dateTimeBetween('-1 year', '+3 months')->format('Y-m-d'),
