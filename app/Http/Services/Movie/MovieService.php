@@ -17,7 +17,9 @@ class MovieService
         $sortBy = $filters['sort_by'] ?? 'id';
         $sortOrder = $filters['sort_order'] ?? 'desc';
 
+
         return Movie::with('genres') // load sẵn thể loại để tránh lỗi load() ở Controller
+
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
@@ -25,11 +27,13 @@ class MovieService
                 });
             })
             ->when($filters['status'] ?? null, fn($query, $status) => $query->where('status', $status))
+
             ->when($filters['language'] ?? null, fn($query, $language) => $query->where('language', $language))
             ->when($filters['genre_id'] ?? null, function ($query, $genreId) {
                 // Lọc phim theo thể loại qua bảng pivot
                 $query->whereHas('genres', fn($q) => $q->where('genres.id', $genreId));
             })
+
             ->orderBy($sortBy, $sortOrder)
             ->paginate($filters['per_page'] ?? 15);
     }
@@ -59,7 +63,9 @@ class MovieService
     {
         return DB::transaction(function () use ($movie, $data) {
             $movie->update($data);
+ CRUD-phim-trangthaiphim
             return $movie->fresh('genres');
+
         });
     }
 
@@ -82,9 +88,11 @@ class MovieService
     }
 
     /**
+
      * Lấy phim theo thể loại (nhiều-nhiều)
      */
     public function getMoviesByGenre(string $genreName): Collection
+
     {
         return Movie::with('genres')
             ->whereHas('genres', fn($q) => $q->where('genres.name', 'like', "%{$genreName}%"))
@@ -133,6 +141,8 @@ class MovieService
             'recent_movies' => Movie::with('genres')
                 ->latest('created_at')
                 ->limit(5)
+
+
                 ->get(),
         ];
     }

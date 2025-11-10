@@ -240,6 +240,55 @@ class MovieController extends Controller
             'success' => true,
             'message' => 'Thống kê phim thành công',
             'data' => new MovieStatisticsResource($stats)
+
         ]);
+    }
+
+    // Xóa phim
+    public function destroy($id)
+    {
+        try {
+            $movie = $this->movieService->getMovieById($id);
+        } catch (\Exception $e) {
+            return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
+        }
+
+        if ($movie->poster && str_contains($movie->poster, '/storage/')) {
+            $filePath = str_replace('storage/', '', $movie->poster);
+            if (Storage::disk('public')->exists($filePath)) {
+                Storage::disk('public')->delete($filePath);
+            }
+        }
+
+        $this->movieService->deleteMovie($movie);
+
+        return response(['success' => true, 'message' => 'Xóa phim thành công']);
+    }
+
+    // Cập nhật trạng thái phim
+    public function changeStatus(Request $request, $id)
+    {
+        $request->validate(['status' => 'required|in:coming,showing,stopped']);
+
+        try {
+            $movie = $this->movieService->getMovieById($id);
+        } catch (\Exception $e) {
+            return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
+        }
+
+        $updated = $this->movieService->updateMovie($movie, ['status' => $request->input('status')]);
+
+        return response([
+            'success' => true,
+            'message' => 'Cập nhật trạng thái thành công',
+            'data' => new MovieResource($updated)
+        ]);
+    }
+
+    // Thống kê phim
+    public function statistics()
+    {
+        $stats = $this->movieService->getMovieStatistics();
+        return response(['success' => true, 'data' => $stats]);
     }
 }

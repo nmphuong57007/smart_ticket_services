@@ -3,7 +3,9 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+
 use Carbon\Carbon;
+
 
 class MovieResource extends JsonResource
 {
@@ -18,6 +20,8 @@ class MovieResource extends JsonResource
             'poster'       => $this->poster ? url($this->poster) : null,
             'trailer'      => $this->trailer,
             'description'  => $this->description,
+
+
             'duration'     => $this->duration,
             'format'       => $this->format,
             'language'     => $this->language,
@@ -41,6 +45,7 @@ class MovieResource extends JsonResource
                     ];
                 });
             }),
+
         ];
     }
 }

@@ -16,7 +16,14 @@ use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\GenreController;
 
+
 use App\Http\Controllers\DiscountController;
+
+Route::get(
+    '/health-check',
+    fn() => response()->json(['status' => 'OK'], 200)
+);
+
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -39,28 +46,28 @@ Route::middleware('api.auth')->group(function () {
         Route::post('/change-password', [UserController::class, 'changePassword']);
 
         // Session management
-        Route::get('/sessions',               [AuthController::class, 'getSessions']);
-        Route::post('/revoke-session',        [AuthController::class, 'revokeSession']);
+        Route::get('/sessions', [AuthController::class, 'getSessions']);
+        Route::post('/revoke-session', [AuthController::class, 'revokeSession']);
         Route::post('/revoke-other-sessions', [AuthController::class, 'revokeOtherSessions']);
-        Route::post('/revoke-all-tokens',     [AuthController::class, 'revokeAllTokens']);
+        Route::post('/revoke-all-tokens', [AuthController::class, 'revokeAllTokens']);
     });
 
     // User management routes (admin/staff only)
     Route::prefix('users')->group(function () {
-        Route::get('/',                     [UserController::class, 'index']);        // Get all users with pagination (admin/staff)
-        Route::get('/statistics',           [UserController::class, 'statistics']);   // Get user statistics (admin/staff)
-        Route::get('/{id}',                 [UserController::class, 'show']);         // Get specific user (admin/staff only)
-        Route::put('/{id}',                 [UserController::class, 'update']);       // Update user (admin only)
+        Route::get('/', [UserController::class, 'index']);        // Get all users with pagination (admin/staff)
+        Route::get('/statistics', [UserController::class, 'statistics']);   // Get user statistics (admin/staff)
+        Route::get('/{id}', [UserController::class, 'show']);         // Get specific user (admin/staff only)
+        Route::put('/{id}', [UserController::class, 'update']);       // Update user (admin only)
         Route::patch('/{id}/toggle-status', [UserController::class, 'toggleStatus']); // Block/unblock user (admin only)
-        Route::delete('/{id}',              [UserController::class, 'destroy']);      // Delete user (admin only)
+        Route::delete('/{id}', [UserController::class, 'destroy']);      // Delete user (admin only)
     });
 
     // Points history routes
     Route::prefix('points')->group(function () {
-        Route::get('/my-history',             [PointsHistoryController::class, 'myHistory']);   // Lịch sử điểm của tôi
+        Route::get('/my-history', [PointsHistoryController::class, 'myHistory']);   // Lịch sử điểm của tôi
         Route::get('/users/{userId}/history', [PointsHistoryController::class, 'userHistory']); // Lịch sử điểm của user cụ thể (admin/staff)
-        Route::post('/add-points',            [PointsHistoryController::class, 'addPoints']);   // Cộng điểm thủ công (admin)
-        Route::get('/history/{id}',           [PointsHistoryController::class, 'show']);        // Chi tiết giao dịch điểm
+        Route::post('/add-points', [PointsHistoryController::class, 'addPoints']);   // Cộng điểm thủ công (admin)
+        Route::get('/history/{id}', [PointsHistoryController::class, 'show']);        // Chi tiết giao dịch điểm
     });
 });
 
@@ -102,20 +109,20 @@ Route::prefix('genres')->group(function () {
 
 // Showtime routes
 Route::prefix('showtimes')->group(function () {
-    Route::get('/',               [ShowtimeController::class, 'index']);     // Lấy danh sách lịch chiếu với filter & pagination
-    Route::get('/rooms',          [ShowtimeController::class, 'rooms']);     // Lấy tất cả phòng có lịch chiếu
+    Route::get('/', [ShowtimeController::class, 'index']);     // Lấy danh sách lịch chiếu với filter & pagination
+    Route::get('/rooms', [ShowtimeController::class, 'rooms']);     // Lấy tất cả phòng có lịch chiếu
     Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
-    Route::get('/by-date',          [ShowtimeController::class, 'getByDate']);         // Lấy lịch chiếu theo ngày
+    Route::get('/by-date', [ShowtimeController::class, 'getByDate']);         // Lấy lịch chiếu theo ngày
     Route::get('/by-date-language', [ShowtimeController::class, 'getByDateLanguage']); // Lấy lịch chiếu theo ngày + ngôn ngữ
     Route::get('/movie/{movieId}/full', [ShowtimeController::class, 'fullShowtimesByMovie']); // full showtimes theo phim
 });
 
 // Cinema routes
 Route::prefix('cinemas')->group(function () {
-    Route::get('/',                     [CinemaController::class, 'index']);       // Lấy danh sách rạp
-    Route::get('/statistics',           [CinemaController::class, 'statistics']);  // Thống kê tổng quan
-    Route::get('/{id}',                 [CinemaController::class, 'show']);        // Chi tiết 1 rạp
-    Route::get('/{cinemaId}/rooms',     [CinemaController::class, 'rooms']);       // Danh sách phòng của rạp
+    Route::get('/', [CinemaController::class, 'index']);       // Lấy danh sách rạp
+    Route::get('/statistics', [CinemaController::class, 'statistics']);  // Thống kê tổng quan
+    Route::get('/{id}', [CinemaController::class, 'show']);        // Chi tiết 1 rạp
+    Route::get('/{cinemaId}/rooms', [CinemaController::class, 'rooms']);       // Danh sách phòng của rạp
     Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
 });
 
@@ -130,7 +137,7 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
 
 // Combo routes
 Route::prefix('combos')->group(function () {
-    Route::get('/',     [ComboController::class, 'index']); // danh sách public
+    Route::get('/', [ComboController::class, 'index']); // danh sách public
     Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 
 });
@@ -144,3 +151,4 @@ Route::prefix('contents')->group(function () {
     Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
 });
+

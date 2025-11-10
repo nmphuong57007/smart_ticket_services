@@ -8,7 +8,9 @@ class MovieStoreRequest extends FormRequest
 {
     public function authorize()
     {
+
         return $this->user() && in_array($this->user()->role, ['admin', 'staff']);
+
     }
 
     public function rules(): array
@@ -23,10 +25,12 @@ class MovieStoreRequest extends FormRequest
             'genre_ids' => 'nullable|array',
             'genre_ids.*' => 'integer|exists:genres,id',
 
+
             'duration' => 'required|integer|min:1',
             'format' => 'required|string|max:50',
             'language' => 'required|in:dub,sub,narrated',
             'release_date' => 'required|date',
+
             'end_date' => [
                 'nullable',
                 'date',
@@ -37,6 +41,7 @@ class MovieStoreRequest extends FormRequest
                     }
                 }
             ],
+
             'status' => 'required|in:coming,showing,stopped',
         ];
     }
