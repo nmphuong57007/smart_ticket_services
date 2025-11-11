@@ -4,6 +4,8 @@ namespace Database\Factories;
 
 use App\Models\Movie;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
+
 
 class MovieFactory extends Factory
 {
@@ -21,10 +23,11 @@ class MovieFactory extends Factory
 
         return [
             'title' => $faker->sentence(3),
+
             'poster' => 'https://placehold.co/600x400',
             'trailer' => 'https://www.youtube.com/watch?v=jCHv_mLCSJA',
+
             'description' => $faker->paragraph(5),
-            'genre' => implode(', ', $chosenGenres),
             'duration' => $faker->numberBetween(90, 160),
             'format' => $faker->randomElement($formats),
             'release_date' => $faker->dateTimeBetween('-1 year', '+3 months')->format('Y-m-d'),

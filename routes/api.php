@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\RoomController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,9 +15,9 @@ use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
-use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\SeatReservationController;
+use App\Http\Controllers\GenreController;
 
 
 use App\Http\Controllers\DiscountController;
@@ -85,12 +86,28 @@ Route::prefix('movies')->group(function () {
 
     // Admin-only (toàn quyền)
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
-        Route::post('/', [MovieController::class, 'store']);        // Thêm phim mới
-        Route::put('/{id}', [MovieController::class, 'update']);       // Cập nhật phim
+        Route::post('/',             [MovieController::class, 'store']);        // Thêm phim mới
+        Route::put('/{id}',          [MovieController::class, 'update']);       // Cập nhật phim
         Route::patch('/{id}/status', [MovieController::class, 'changeStatus']); // Đổi trạng thái phim
-        Route::delete('/{id}', [MovieController::class, 'destroy']);      // Xóa phim
+        Route::delete('/{id}',       [MovieController::class, 'destroy']);      // Xóa phim
     });
 });
+
+// Genre routes (gộp public + admin)
+Route::prefix('genres')->group(function () {
+
+    // Public: xem danh sách thể loại khả dụng (hiển thị checkbox chọn phim)
+    Route::get('/public', [GenreController::class, 'indexPublic']);
+
+    // Admin-only: quản lý thể loại
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::get('/', [GenreController::class, 'index']);        // danh sách đầy đủ (kể cả ẩn)
+        Route::post('/', [GenreController::class, 'store']);       // thêm
+        Route::put('/{id}', [GenreController::class, 'update']);   // cập nhật
+        Route::delete('/{id}', [GenreController::class, 'destroy']); // xóa
+    });
+});
+
 
 
 // Showtime routes
@@ -134,10 +151,9 @@ Route::get('tickets/preview', [TicketController::class, 'preview']);
 
 // Content routes
 Route::prefix('contents')->group(function () {
-    Route::get('/', [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
+    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
 });
-
 // Room routes
 Route::prefix('rooms')->group(function () {
     // Public routes (ai cũng xem được)
@@ -196,3 +212,4 @@ Route::middleware(['api.auth', 'role:customer,admin,staff'])
             ->whereNumber('showtimeId')
             ->name('seat-reservations.by-showtime');
 });
+
