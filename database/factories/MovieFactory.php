@@ -24,8 +24,10 @@ class MovieFactory extends Factory
         return [
             'title' => $faker->sentence(3),
 
-            'poster' => 'https://placehold.co/600x400',
-            'trailer' => 'https://www.youtube.com/watch?v=jCHv_mLCSJA',
+
+            'poster' => 'https://picsum.photos/id/' . $faker->unique()->numberBetween(1, 9999) . '/400/600',
+            'trailer' => 'https://www.youtube.com/watch?v=' . Str::random(11),
+
 
             'description' => $faker->paragraph(5),
             'duration' => $faker->numberBetween(90, 160),
