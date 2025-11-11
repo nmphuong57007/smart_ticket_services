@@ -16,7 +16,6 @@ class Movie extends Model
         'poster',
         'trailer',
         'description',
-        'genre',
         'duration',
         'format',
         'language',       // Ngôn ngữ (dub/sub/narrated)
