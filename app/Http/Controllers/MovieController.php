@@ -23,6 +23,7 @@ class MovieController extends Controller
         $this->movieFilterValidator = $movieFilterValidator;
     }
 
+
     // Lấy danh sách phim (filter + phân trang)
     public function index(Request $request)
     {
@@ -42,6 +43,7 @@ class MovieController extends Controller
                 'per_page' => $request->query('per_page', 15),
             ];
 
+            // Lấy phim có load sẵn thể loại (từ MovieService)
             $movies = $this->movieService->getMovies($filters);
 
             return response([
@@ -68,11 +70,12 @@ class MovieController extends Controller
         }
     }
 
+
     // Lấy chi tiết phim
     public function show($id)
     {
         try {
-            $movie = $this->movieService->getMovieById($id);
+            $movie = $this->movieService->getMovieById($id); // đã with('genres') trong service
             return response([
                 'success' => true,
                 'data' => new MovieResource($movie)
@@ -81,6 +84,7 @@ class MovieController extends Controller
             return response(['success' => false, 'message' => 'Phim không tồn tại.'], 404);
         }
     }
+
 
     // Thêm phim mới
     public function store(MovieStoreRequest $request)
@@ -112,6 +116,7 @@ class MovieController extends Controller
         ], 201);
     }
 
+
     // Cập nhật phim
     public function update(MovieUpdateRequest $request, $id)
     {
@@ -128,7 +133,6 @@ class MovieController extends Controller
             if ($movie->poster && Storage::disk('public')->exists($movie->poster)) {
                 Storage::disk('public')->delete($movie->poster);
             }
-
             $path = $request->file('poster')->store('posters', 'public');
             $data['poster'] = $path; // chỉ lưu 'posters/...'
         }
@@ -157,6 +161,8 @@ class MovieController extends Controller
         ]);
     }
 
+
+
     // Xóa phim (kèm ảnh và thể loại liên kết)
     public function destroy($id)
     {
@@ -165,6 +171,7 @@ class MovieController extends Controller
         } catch (\Exception $e) {
             return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
         }
+
 
         // Xóa poster an toàn
         if ($movie->poster && Storage::disk('public')->exists($movie->poster)) {
@@ -180,6 +187,8 @@ class MovieController extends Controller
 
         return response(['success' => true, 'message' => 'Xóa phim thành công']);
     }
+
+
 
     // Cập nhật trạng thái phim
     public function changeStatus(Request $request, $id)
@@ -202,6 +211,7 @@ class MovieController extends Controller
             'data' => new MovieResource($updated)
         ]);
     }
+
 
     // Thống kê phim
     public function statistics()
