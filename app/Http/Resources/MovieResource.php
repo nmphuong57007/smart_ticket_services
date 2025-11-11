@@ -17,7 +17,7 @@ class MovieResource extends JsonResource
         return [
             'id'           => $this->id,
             'title'        => $this->title,
-            'poster'       => $this->poster ? url($this->poster) : null,
+            'poster'       => $this->poster ? asset('storage/' . $this->poster) : null,
             'trailer'      => $this->trailer,
             'description'  => $this->description,
 

@@ -40,8 +40,7 @@ class MovieController extends Controller
                 'language' => $request->query('language'),
                 'sort_by' => $request->query('sort_by', 'id'),
                 'sort_order' => $request->query('sort_order', 'asc'),
-                'per_page' => $request->query('per_page', 15)
-
+                'per_page' => $request->query('per_page', 15),
             ];
 
             // Lấy phim có load sẵn thể loại (từ MovieService)
@@ -95,7 +94,7 @@ class MovieController extends Controller
         // Upload poster
         if ($request->hasFile('poster')) {
             $path = $request->file('poster')->store('posters', 'public');
-            $data['poster'] = 'storage/' . $path;
+            $data['poster'] = $path; // chỉ lưu 'posters/...'
         }
 
         $data['language'] = $request->input('language');
@@ -131,14 +130,11 @@ class MovieController extends Controller
 
         // Upload lại poster nếu có
         if ($request->hasFile('poster')) {
-            if ($movie->poster && str_contains($movie->poster, '/storage/')) {
-                $filePath = str_replace('storage/', '', $movie->poster);
-                if (Storage::disk('public')->exists($filePath)) {
-                    Storage::disk('public')->delete($filePath);
-                }
+            if ($movie->poster && Storage::disk('public')->exists($movie->poster)) {
+                Storage::disk('public')->delete($movie->poster);
             }
             $path = $request->file('poster')->store('posters', 'public');
-            $data['poster'] = 'storage/' . $path;
+            $data['poster'] = $path; // chỉ lưu 'posters/...'
         }
 
         if ($request->has('language')) {
@@ -166,6 +162,7 @@ class MovieController extends Controller
     }
 
 
+
     // Xóa phim (kèm ảnh và thể loại liên kết)
     public function destroy($id)
     {
@@ -175,16 +172,11 @@ class MovieController extends Controller
             return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
         }
 
-        //  Xóa poster an toàn
-        if ($movie->poster) {
-            $filePath = str_replace(['storage/', 'public/'], '', $movie->poster);
 
-            if (Storage::disk('public')->exists($filePath)) {
-                Storage::disk('public')->delete($filePath);
-                Log::info("Đã xóa poster: {$filePath}");
-            } else {
-                Log::warning("Không tìm thấy tệp poster khi xóa phim: {$filePath}");
-            }
+        // Xóa poster an toàn
+        if ($movie->poster && Storage::disk('public')->exists($movie->poster)) {
+            Storage::disk('public')->delete($movie->poster);
+            Log::info("Đã xóa poster: {$movie->poster}");
         }
 
         // Gỡ thể loại liên kết

@@ -212,4 +212,3 @@ Route::middleware(['api.auth', 'role:customer,admin,staff'])
             ->whereNumber('showtimeId')
             ->name('seat-reservations.by-showtime');
 });
-
