@@ -3,7 +3,6 @@
 namespace App\Http\Services\Seat;
 
 use App\Models\Seat;
-use App\Models\Showtime;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class SeatService
@@ -13,8 +12,7 @@ class SeatService
      */
     public function getSeats(array $filters = []): LengthAwarePaginator
     {
-        $query = Seat::with(['room', 'cinema'])
-            ->withActiveReservation();
+        $query = Seat::with(['room', 'cinema']);
 
         if (!empty($filters['cinema_id'])) {
             $query->where('cinema_id', $filters['cinema_id']);
@@ -28,20 +26,15 @@ class SeatService
             $query->where('type', $filters['type']);
         }
 
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
         if (!empty($filters['search'])) {
             $query->where('seat_code', 'like', "%{$filters['search']}%");
         }
 
-        $seats = $query->paginate($filters['per_page'] ?? 10);
-
-        if (!empty($filters['status'])) {
-            // Lọc theo current_status sau khi eager load
-            $seats->setCollection(
-                $seats->getCollection()->filter(fn($seat) => $seat->current_status === $filters['status'])
-            );
-        }
-
-        return $seats;
+        return $query->paginate($filters['per_page'] ?? 10);
     }
 
     /**
@@ -49,9 +42,7 @@ class SeatService
      */
     public function getSeatById(int $id): ?Seat
     {
-        return Seat::with(['room', 'cinema'])
-            ->withActiveReservation()
-            ->find($id);
+        return Seat::with(['room', 'cinema'])->find($id);
     }
 
     /**
@@ -60,25 +51,9 @@ class SeatService
     public function getSeatsByRoom(int $roomId)
     {
         return Seat::where('room_id', $roomId)
-            ->with(['room', 'cinema', 'reservations'])
+            ->with(['room', 'cinema'])
             ->orderBy('seat_code')
             ->get();
-    }
-
-    /**
-     * Lấy danh sách ghế theo suất chiếu (có trạng thái thực tế)
-     */
-    public function getSeatsByShowtime(int $showtimeId)
-    {
-        $showtime = Showtime::with('room.seats.reservations')->findOrFail($showtimeId);
-
-        $seats = $showtime->room->seats;
-
-        foreach ($seats as $seat) {
-            $seat->current_status = $seat->getStatusForShowtime($showtimeId);
-        }
-
-        return $seats;
     }
 
     /**
@@ -100,6 +75,9 @@ class SeatService
         return $seat->delete();
     }
 
+    /**
+     * Thay đổi trạng thái ghế (available, maintenance, disabled)
+     */
     public function changeStatus(Seat $seat, string $status): Seat
     {
         $seat->status = $status;

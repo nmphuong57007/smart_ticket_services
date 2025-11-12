@@ -8,7 +8,7 @@ class SeatStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-
+        // Chỉ admin mới được phép thêm ghế
         return $this->user() && $this->user()->role === 'admin';
     }
 
@@ -19,7 +19,7 @@ class SeatStoreRequest extends FormRequest
             'room_id'   => ['required', 'exists:rooms,id'],
             'seat_code' => ['required', 'string', 'max:10', 'unique:seats,seat_code'],
             'type'      => ['required', 'in:standard,vip,double'],
-            'status'    => ['nullable', 'in:available,reserved,booked'],
+            'status'    => ['nullable', 'in:available,maintenance,disabled'], // ✅ chỉ trạng thái vật lý
             'price'     => ['required', 'numeric', 'min:0'],
         ];
     }
@@ -40,7 +40,7 @@ class SeatStoreRequest extends FormRequest
             'type.required'      => 'Loại ghế là bắt buộc.',
             'type.in'            => 'Loại ghế không hợp lệ. (standard, vip, double)',
 
-            'status.in'          => 'Trạng thái ghế không hợp lệ.',
+            'status.in'          => 'Trạng thái ghế không hợp lệ. (available, maintenance, disabled)',
             'price.required'     => 'Giá ghế là bắt buộc.',
             'price.numeric'      => 'Giá ghế phải là số.',
             'price.min'          => 'Giá ghế phải lớn hơn hoặc bằng 0.',
