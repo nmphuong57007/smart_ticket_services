@@ -11,6 +11,8 @@ class BookingProduct extends Model
 
     protected $table = 'booking_products';
 
+    public $timestamps = false;
+
     protected $fillable = [
         'booking_id',
         'product_id',

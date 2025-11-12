@@ -13,6 +13,7 @@ use App\Models\Showtime;
 use App\Models\Product;
 use App\Models\Ticket;
 use App\Models\Discount;
+use App\Models\SeatReservation;
 use Illuminate\Support\Str;
 
 class BookingController extends Controller
@@ -28,6 +29,7 @@ class BookingController extends Controller
         }
 
         $validated = $request->validate([
+            'cinema_id' => 'required|integer|exists:cinemas,id',
             'showtime_id' => 'required|exists:showtimes,id',
             'seats' => 'required|array|min:1',
             'seats.*' => 'integer|exists:seats,id',
@@ -57,6 +59,22 @@ class BookingController extends Controller
                 ], 404);
             }
 
+            $room = $showtime->room()->lockForUpdate()->first();
+
+            if (!$room) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Suất chiếu không hợp lệ (không tìm thấy phòng chiếu).'
+                ], 422);
+            }
+
+            if ((int) $room->cinema_id !== (int) $validated['cinema_id']) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Suất chiếu không thuộc rạp mà bạn đã chọn.'
+                ], 422);
+            }
+
             $showDate = $showtime->show_date;
             $showTime = $showtime->show_time;
             if ($showDate && $showTime) {
@@ -69,18 +87,73 @@ class BookingController extends Controller
                 }
             }
 
+            // Giải phóng ghế đã giữ quá thời gian cho phép
+            $reservationExpiry = now()->subSeconds(SeatReservation::TIMEOUT_SECONDS);
+            SeatReservation::where('showtime_id', $showtime->id)
+                ->where('status', SeatReservation::STATUS_RESERVED)
+                ->where('reserved_at', '<', $reservationExpiry)
+                ->update([
+                    'status' => SeatReservation::STATUS_AVAILABLE,
+                    'reserved_at' => null,
+                    'booked_at' => null,
+                    'user_id' => null,
+                ]);
+
             // 1️⃣ Kiểm tra ghế còn trống
             $selectedSeats = Seat::whereIn('id', $seatIds)
-                ->where('status', 'available')
-                ->where('showtime_id', $showtime->id)
+                ->where('room_id', $showtime->room_id)
                 ->lockForUpdate()
                 ->get();
 
             if ($selectedSeats->count() !== $seatIds->count()) {
                 DB::rollBack();
                 return response()->json([
+                    'message' => 'Ghế không hợp lệ hoặc không thuộc phòng chiếu của suất này.'
+                ], 422);
+            }
+
+            $unavailableSeats = $selectedSeats->filter(function ($seat) {
+                return $seat->status === Seat::STATUS_BOOKED;
+            });
+
+            if ($unavailableSeats->isNotEmpty()) {
+                DB::rollBack();
+                return response()->json([
                     'message' => 'Một hoặc nhiều ghế đã được đặt. Vui lòng chọn lại.'
                 ], 409);
+            }
+
+            // Kiểm tra các reservation khác còn hiệu lực
+            $reservations = SeatReservation::where('showtime_id', $showtime->id)
+                ->whereIn('seat_id', $seatIds)
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('seat_id');
+
+            foreach ($seatIds as $seatId) {
+                $reservation = $reservations->get($seatId);
+                if (!$reservation) {
+                    continue;
+                }
+
+                if ($reservation->status === SeatReservation::STATUS_BOOKED && $reservation->user_id !== $user->id) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Một hoặc nhiều ghế đã được đặt. Vui lòng chọn lại.'
+                    ], 409);
+                }
+
+                if (
+                    $reservation->status === SeatReservation::STATUS_RESERVED &&
+                    $reservation->reserved_at &&
+                    $reservation->reserved_at->greaterThan($reservationExpiry) &&
+                    $reservation->user_id !== $user->id
+                ) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Một hoặc nhiều ghế đang được giữ bởi người khác.'
+                    ], 409);
+                }
             }
 
             // 2️⃣ Tính tiền vé
@@ -171,7 +244,23 @@ class BookingController extends Controller
 
             // 5️⃣ Đánh dấu ghế đã đặt + tạo ticket
             foreach ($selectedSeats as $seat) {
-                $seat->update(['status' => 'booked']);
+                $seat->update(['status' => Seat::STATUS_BOOKED]);
+
+                $reservation = $reservations->get($seat->id);
+                $reservedAt = $reservation?->reserved_at ?: now();
+
+                SeatReservation::updateOrCreate(
+                    [
+                        'showtime_id' => $showtime->id,
+                        'seat_id' => $seat->id,
+                    ],
+                    [
+                        'user_id' => $user->id,
+                        'status' => SeatReservation::STATUS_BOOKED,
+                        'reserved_at' => $reservedAt,
+                        'booked_at' => now(),
+                    ]
+                );
                 Ticket::create([
                     'booking_id' => $booking->id,
                     'seat_id' => $seat->id,
@@ -180,8 +269,8 @@ class BookingController extends Controller
             }
 
             // 6️⃣ Nếu phòng hết chỗ, báo "hết vé"
-            $remainingSeats = Seat::where('showtime_id', $showtime->id)
-                ->where('status', 'available')
+            $remainingSeats = Seat::where('room_id', $showtime->room_id)
+                ->where('status', Seat::STATUS_AVAILABLE)
                 ->count();
             $message = $remainingSeats === 0 ? 'Hết chỗ cho suất chiếu này.' : 'Đặt vé thành công.';
 

@@ -11,6 +11,8 @@ class Ticket extends Model
 
     protected $table = 'tickets';
 
+    public $timestamps = false;
+
     protected $fillable = [
         'booking_id',
         'seat_id',

@@ -27,8 +27,7 @@ class SeatSeeder extends Seeder
                         'room_id'   => $room->id,
                         'seat_code' => $seatCode,
                         'type'      => rand(0, 4) === 0 ? 'vip' : 'normal', // 20% VIP
-                        'status'    => 'available',
-                        'price'     => $room->seat_price ?? 0,
+                        'status'    => 'available'
                     ];
                 }
             }
