@@ -8,6 +8,7 @@ use App\Models\Room;
 use App\Models\Movie;
 use Faker\Factory as Faker;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ShowtimesSeeder extends Seeder
 {
@@ -15,55 +16,48 @@ class ShowtimesSeeder extends Seeder
     {
         $faker = Faker::create('vi_VN');
 
-        // Các khung giờ chiếu phổ biến trong rạp
-        $showTimes = ['08:00', '10:30', '13:00', '15:30', '18:00', '20:30', '22:45'];
+        // Các khung giờ chiếu phổ biến
+        $timeSlots = ['08:00', '10:30', '13:00', '15:30', '18:00', '20:30', '22:45'];
 
-        // Các định dạng và ngôn ngữ
+        // Các định dạng & ngôn ngữ
         $formats = ['2D', '3D', 'IMAX', '4DX'];
         $languages = ['sub', 'dub', 'narrated'];
 
         $rooms = Room::all();
         $movies = Movie::all();
 
-        // Xoá dữ liệu cũ để seed lại
         Showtime::query()->delete();
 
         $showtimeData = [];
 
         foreach ($rooms as $room) {
-            // Mỗi phòng chiếu trong 7 ngày tới
+            // 7 ngày tới mỗi phòng chiếu vài phim
             for ($i = 0; $i < 7; $i++) {
-                $showDate = now()->addDays($i)->format('Y-m-d');
-
-                // Mỗi ngày, phòng chiếu ngẫu nhiên 2 phim khác nhau
-                $dailyMovies = $movies->random(2);
+                $showDate = Carbon::now('Asia/Ho_Chi_Minh')->addDays($i)->format('Y-m-d');
+                $dailyMovies = $movies->random(min(2, $movies->count()));
 
                 foreach ($dailyMovies as $movie) {
-                    // Mỗi phim có 3–5 suất chiếu khác nhau trong ngày
-                    $numShowtimes = rand(3, 5);
-                    $selectedTimes = $faker->randomElements($showTimes, $numShowtimes);
+                    $selectedTimes = $faker->randomElements($timeSlots, rand(3, 5));
 
                     foreach ($selectedTimes as $time) {
                         $showtimeData[] = [
-                            'movie_id' => $movie->id,
-                            'room_id' => $room->id,
-                            'show_date' => $showDate,
-                            'show_time' => $time,
-                            'price' => $faker->randomElement([65000, 75000, 85000, 90000, 100000, 120000]),
-                            'format' => $faker->randomElement($formats),
-                            'language_type' => $faker->randomElement($languages),
+                            'movie_id'       => $movie->id,
+                            'room_id'        => $room->id,
+                            'show_date'      => $showDate,
+                            'show_time'      => $time,
+                            'price'          => $faker->randomElement([65000, 75000, 85000, 90000, 100000, 120000]),
+                            'format'         => $faker->randomElement($formats),
+                            'language_type'  => $faker->randomElement($languages),
                         ];
                     }
                 }
             }
         }
 
-        // Bulk insert để tăng tốc
-        $chunks = array_chunk($showtimeData, 1000);
-        foreach ($chunks as $chunk) {
+        foreach (array_chunk($showtimeData, 1000) as $chunk) {
             DB::table('showtimes')->insert($chunk);
         }
 
-        echo "Seed dữ liệu lịch chiếu (Showtimes) thành công!\n";
+        echo "✅ Đã seed " . count($showtimeData) . " lịch chiếu thành công!\n";
     }
 }
