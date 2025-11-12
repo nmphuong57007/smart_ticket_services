@@ -17,16 +17,16 @@ class DatabaseSeeder extends Seeder
 
         // Gọi các seeder theo thứ tự logic (quan hệ phụ thuộc)
         $this->call([
-            AdminUserSeeder::class,       // 1️ Tạo tài khoản admin
-            CinemasSeeder::class,         // 2️ Tạo danh sách rạp
-            RoomsSeeder::class,           // 3️ Mỗi rạp có vài phòng
-            GenresSeeder::class,          // 4️ Tạo thể loại phim
-            MoviesSeeder::class,          // 5️ Tạo phim
-            ShowtimesSeeder::class,       // 6️ Lịch chiếu liên kết phim + phòng
-            SeatSeeder::class,            // 7️ Ghế thuộc từng phòng
-            PointsHistorySeeder::class,   // 8️ Lịch sử điểm thưởng
-            ComboSeeder::class,           // 9️ Combo thức ăn/nước
-            ContentsSeeder::class,        // 10 Bài viết, tin tức
+            AdminUserSeeder::class,
+            CinemasSeeder::class,
+            RoomsSeeder::class,
+            GenresSeeder::class,
+            MoviesSeeder::class,
+            ShowtimesSeeder::class,
+            SeatSeeder::class,
+            PointsHistorySeeder::class,
+            ComboSeeder::class,
+            ContentsSeeder::class,       
         ]);
 
         // Bật lại kiểm tra khóa ngoại
