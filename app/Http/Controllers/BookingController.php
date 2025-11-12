@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Booking;
@@ -10,63 +12,142 @@ use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\Product;
 use App\Models\Ticket;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Discount;
+use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Bạn cần đăng nhập để đặt vé.'
+            ], 401);
+        }
 
         $validated = $request->validate([
             'showtime_id' => 'required|exists:showtimes,id',
             'seats' => 'required|array|min:1',
-            'seats.*' => 'exists:seats,id',
-            'products' => 'array',
-            'products.*.id' => 'exists:products,id',
+            'seats.*' => 'integer|exists:seats,id',
+            'products' => 'nullable|array',
+            'products.*.id' => 'required|integer|exists:products,id',
             'products.*.quantity' => 'integer|min:1',
             'discount_code' => 'nullable|string'
         ]);
 
+        $seatIds = collect($validated['seats'])->map(fn ($id) => (int) $id)->values();
+
+        if ($seatIds->unique()->count() !== $seatIds->count()) {
+            return response()->json([
+                'message' => 'Danh sách ghế không hợp lệ (trùng ghế).'
+            ], 422);
+        }
+
         try {
             DB::beginTransaction();
 
-            $showtime = Showtime::find($validated['showtime_id']);
+            $showtime = Showtime::lockForUpdate()->find($validated['showtime_id']);
+
+            if (!$showtime) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Không tìm thấy suất chiếu.'
+                ], 404);
+            }
+
+            $showDate = $showtime->show_date;
+            $showTime = $showtime->show_time;
+            if ($showDate && $showTime) {
+                $showDateTime = Carbon::parse($showDate . ' ' . $showTime);
+                if ($showDateTime->isPast()) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Suất chiếu này đã kết thúc, không thể đặt vé.'
+                    ], 422);
+                }
+            }
 
             // 1️⃣ Kiểm tra ghế còn trống
-            $selectedSeats = Seat::whereIn('id', $validated['seats'])
+            $selectedSeats = Seat::whereIn('id', $seatIds)
                 ->where('status', 'available')
                 ->where('showtime_id', $showtime->id)
                 ->lockForUpdate()
                 ->get();
 
-            if ($selectedSeats->count() != count($validated['seats'])) {
+            if ($selectedSeats->count() !== $seatIds->count()) {
+                DB::rollBack();
                 return response()->json([
                     'message' => 'Một hoặc nhiều ghế đã được đặt. Vui lòng chọn lại.'
-                ], 400);
+                ], 409);
             }
 
             // 2️⃣ Tính tiền vé
-            $ticketPrice = $showtime->price * count($validated['seats']);
+            $ticketPrice = $selectedSeats->sum(fn ($seat) => $seat->price ?? 0);
+            if ($ticketPrice <= 0) {
+                $ticketPrice = (float) $showtime->price * $selectedSeats->count();
+            }
+
             $productTotal = 0;
+            $productItems = [];
 
             if (!empty($validated['products'])) {
-                foreach ($validated['products'] as $p) {
-                    $product = Product::find($p['id']);
-                    $productTotal += $product->price * $p['quantity'];
+                $productPayload = collect($validated['products']);
+                $products = Product::whereIn('id', $productPayload->pluck('id'))
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($productPayload as $productRequest) {
+                    $product = $products->get($productRequest['id']);
+                    if (!$product) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => 'Sản phẩm không tồn tại.'
+                        ], 404);
+                    }
+
+                    $quantity = (int) ($productRequest['quantity'] ?? 1);
+                    if ($quantity < 1) {
+                        DB::rollBack();
+                        return response()->json([
+                            'message' => 'Số lượng sản phẩm phải lớn hơn 0.'
+                        ], 422);
+                    }
+                    $lineTotal = (float) $product->price * $quantity;
+                    $productTotal += $lineTotal;
+
+                    $productItems[] = [
+                        'product_id' => $product->id,
+                        'quantity' => $quantity,
+                    ];
                 }
             }
 
-            $discount = 0;
+            $discountValue = 0;
             if (!empty($validated['discount_code'])) {
-                // Có thể thêm bảng discount riêng — ở đây chỉ demo
-                if ($validated['discount_code'] === 'SALE10') {
-                    $discount = ($ticketPrice + $productTotal) * 0.1;
+                $discount = Discount::where('code', $validated['discount_code'])->first();
+
+                if (!$discount) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Mã giảm giá không tồn tại.'
+                    ], 404);
                 }
+
+                if (!$discount->isValid()) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Mã giảm giá đã hết hạn hoặc không khả dụng.'
+                    ], 422);
+                }
+
+                $discountValue = (($ticketPrice + $productTotal) * (float) $discount->discount_percent) / 100;
             }
 
-            $total = $ticketPrice + $productTotal;
-            $final = $total - $discount;
+            $total = round($ticketPrice + $productTotal, 2);
+            $discountValue = round(min($discountValue, $total), 2);
+            $final = round(max($total - $discountValue, 0), 2);
 
             // 3️⃣ Tạo booking
             $booking = Booking::create([
@@ -74,20 +155,18 @@ class BookingController extends Controller
                 'showtime_id' => $showtime->id,
                 'discount_code' => $validated['discount_code'] ?? null,
                 'total_amount' => $total,
-                'discount' => $discount,
+                'discount' => $discountValue,
                 'final_amount' => $final,
                 'payment_status' => 'paid', // giả định đã thanh toán
             ]);
 
             // 4️⃣ Tạo booking_products
-            if (!empty($validated['products'])) {
-                foreach ($validated['products'] as $p) {
-                    BookingProduct::create([
-                        'booking_id' => $booking->id,
-                        'product_id' => $p['id'],
-                        'quantity' => $p['quantity'],
-                    ]);
-                }
+            foreach ($productItems as $item) {
+                BookingProduct::create([
+                    'booking_id' => $booking->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                ]);
             }
 
             // 5️⃣ Đánh dấu ghế đã đặt + tạo ticket
@@ -96,7 +175,7 @@ class BookingController extends Controller
                 Ticket::create([
                     'booking_id' => $booking->id,
                     'seat_id' => $seat->id,
-                    'qr_code' => 'TICKET-' . uniqid(),
+                    'qr_code' => 'TICKET-' . Str::uuid()->toString(),
                 ]);
             }
 
@@ -112,9 +191,11 @@ class BookingController extends Controller
                 'message' => $message,
                 'booking_id' => $booking->id,
                 'total_amount' => $total,
+                'discount_amount' => $discountValue,
                 'final_amount' => $final,
-                'tickets' => $booking->tickets()->get(),
-            ]);
+                'tickets' => $booking->tickets()->with('seat')->get(),
+                'products' => $booking->bookingProducts()->with('product')->get(),
+            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);

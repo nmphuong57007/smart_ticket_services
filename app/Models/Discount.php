@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class Discount extends Model
 {
     use HasFactory;
+
     protected $table = 'promotions';
+
     protected $fillable = [
         'code',
         'discount_percent',
@@ -17,10 +19,28 @@ class Discount extends Model
         'status',
     ];
 
+    protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'discount_percent' => 'float',
+    ];
 
-    public function isValid()
+    public function isValid(): bool
     {
+        if ($this->status !== 'active') {
+            return false;
+        }
+
         $now = now();
-        return $this->status === 'active' && $now->between($this->start_date, $this->end_date);
+
+        if ($this->start_date && $now->lt($this->start_date)) {
+            return false;
+        }
+
+        if ($this->end_date && $now->gt($this->end_date)) {
+            return false;
+        }
+
+        return true;
     }
 }
