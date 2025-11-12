@@ -18,7 +18,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\SeatReservationController;
 use App\Http\Controllers\GenreController;
-
+use App\Http\Controllers\BookingController;
 
 use App\Http\Controllers\DiscountController;
 
@@ -211,4 +211,8 @@ Route::middleware(['api.auth', 'role:customer,admin,staff'])
         Route::get('/by-showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
             ->whereNumber('showtimeId')
             ->name('seat-reservations.by-showtime');
+});
+
+Route::middleware('api.auth')->group(function () {
+    Route::post('/bookings', [BookingController::class, 'store']);
 });
