@@ -23,6 +23,7 @@ class MovieResource extends JsonResource
                     ? $this->poster
                     : asset('storage/' . $this->poster))
                 : null,
+
             'trailer'      => $this->trailer,
             'description'  => $this->description,
 
