@@ -3,121 +3,145 @@
 namespace App\Http\Services\Movie;
 
 use App\Models\Movie;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 class MovieService
 {
     /**
-     * Get movies with pagination and filtering
+     * Lấy danh sách phim (phân trang, lọc, sắp xếp)
      */
-    public function getMovies(array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    public function getMovies(array $filters = []): LengthAwarePaginator
     {
         $sortBy = $filters['sort_by'] ?? 'id';
         $sortOrder = $filters['sort_order'] ?? 'desc';
 
-        // Xây dựng query với filters và sorting
-        return Movie::query()
-            ->when($filters['search'] ?? null, fn($query, $search) => $query->where(function ($subQuery) use ($search) {
-                $subQuery->where('title', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            }))
-            ->when($filters['status'] ?? null, fn($query, $status) => $query->where('status', $status))
-            ->when($filters['genre'] ?? null, fn($query, $genre) => $query->where('genre', 'like', "%{$genre}%"))
-            ->when(true, function ($query) use ($sortBy, $sortOrder) {
-                // Apply sorting logic
-                if (in_array($sortBy, ['id', 'created_at']) && $sortOrder === 'desc') {
-                    return $query->latest($sortBy);
-                } elseif (in_array($sortBy, ['id', 'created_at']) && $sortOrder === 'asc') {
-                    return $query->oldest($sortBy);
-                } else {
-                    return $query->orderBy($sortBy, $sortOrder);
-                }
+
+        return Movie::with('genres') // load sẵn thể loại để tránh lỗi load() ở Controller
+
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
             })
+            ->when($filters['status'] ?? null, fn($query, $status) => $query->where('status', $status))
+
+            ->when($filters['language'] ?? null, fn($query, $language) => $query->where('language', $language))
+            ->when($filters['genre_id'] ?? null, function ($query, $genreId) {
+                // Lọc phim theo thể loại qua bảng pivot
+                $query->whereHas('genres', fn($q) => $q->where('genres.id', $genreId));
+            })
+
+            ->orderBy($sortBy, $sortOrder)
             ->paginate($filters['per_page'] ?? 15);
     }
 
     /**
-     * Find movie by ID
+     * Lấy phim theo ID (bắt lỗi nếu không thấy)
      */
-    public function findMovieById(int $id): Movie
+    public function getMovieById(int $id): Movie
     {
-        return Movie::findOrFail($id);
+        return Movie::with('genres')->findOrFail($id);
     }
 
     /**
-     * Create new movie
+     * Tạo mới phim
      */
     public function createMovie(array $data): Movie
     {
-        return Movie::create($data);
+        return DB::transaction(function () use ($data) {
+            return Movie::create($data);
+        });
     }
 
     /**
-     * Update movie
+     * Cập nhật phim
      */
     public function updateMovie(Movie $movie, array $data): Movie
     {
-        $movie->update($data);
-        return $movie->fresh();
+        return DB::transaction(function () use ($movie, $data) {
+            $movie->update($data);
+            return $movie->fresh('genres');
+        });
     }
 
     /**
-     * Delete movie
+     * Xóa phim
      */
     public function deleteMovie(Movie $movie): bool
     {
-        return $movie->delete();
+        return DB::transaction(function () use ($movie) {
+            return $movie->delete();
+        });
     }
 
     /**
-     * Get movies by status
+     * Lấy phim theo trạng thái
      */
-    public function getMoviesByStatus(string $status): \Illuminate\Database\Eloquent\Collection
+    public function getMoviesByStatus(string $status): Collection
     {
-        return Movie::where('status', $status)->get();
+        return Movie::with('genres')->where('status', $status)->get();
     }
 
     /**
-     * Get movies by genre
+
+     * Lấy phim theo thể loại (nhiều-nhiều)
      */
-    public function getMoviesByGenre(string $genre): \Illuminate\Database\Eloquent\Collection
+    public function getMoviesByGenre(string $genreName): Collection
+
     {
-        return Movie::where('genre', 'like', "%{$genre}%")->get();
+        return Movie::with('genres')
+            ->whereHas('genres', fn($q) => $q->where('genres.name', 'like', "%{$genreName}%"))
+            ->get();
     }
 
     /**
-     * Search movies
+     * Tìm kiếm phim
      */
-    public function searchMovies(string $search): \Illuminate\Database\Eloquent\Collection
+    public function searchMovies(string $search): Collection
     {
-        return Movie::where(function ($query) use ($search) {
-            $query->where('title', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%");
-        })->get();
+        return Movie::with('genres')
+            ->where(function ($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            })
+            ->get();
     }
 
     /**
-     * Get movie statistics
+     * Thống kê phim
      */
     public function getMovieStatistics(): array
     {
         return [
-            'total_movies' => Movie::count(),
+            // Thống kê tổng quan
+            'total_movies'   => Movie::count(),
             'showing_movies' => Movie::where('status', 'showing')->count(),
-            'coming_movies' => Movie::where('status', 'coming')->count(),
+            'coming_movies'  => Movie::where('status', 'coming')->count(),
             'stopped_movies' => Movie::where('status', 'stopped')->count(),
-            'movies_by_genre' => Movie::selectRaw('genre, COUNT(*) as count')
-                ->groupBy('genre')
-                ->pluck('count', 'genre')
-                ->toArray(),
-            'recent_movies' => Movie::latest('created_at')
-                ->limit(5)
-                ->select('id', 'title', 'status', 'release_date', 'created_at')
-                ->get()
-        ];
-    }
 
-    public function getMovieById(int $id): ?Movie
-    {
-        return Movie::find($id);
+            // Thống kê theo thể loại
+            'movies_by_genre' => DB::table('movie_genre')
+                ->join('genres', 'movie_genre.genre_id', '=', 'genres.id')
+                ->select('genres.name', DB::raw('COUNT(movie_genre.movie_id) as count'))
+                ->groupBy('genres.name')
+                ->pluck('count', 'genres.name')
+                ->toArray(),
+
+            // Toàn bộ phim (đầy đủ cột, có thể loại)
+            'all_movies' => Movie::with('genres')
+                ->orderBy('created_at', 'desc')
+                ->get(),
+
+            // 5 phim mới nhất (đầy đủ cột, có thể loại)
+            'recent_movies' => Movie::with('genres')
+                ->latest('created_at')
+                ->limit(5)
+
+
+                ->get(),
+        ];
     }
 }

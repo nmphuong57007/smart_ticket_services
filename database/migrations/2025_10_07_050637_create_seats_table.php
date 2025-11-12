@@ -13,12 +13,14 @@ return new class extends Migration
     {
         Schema::create('seats', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('showtime_id')->nullable();
-            $table->string('seat_code', 10)->nullable();
+            $table->unsignedBigInteger('room_id');
+            $table->string('seat_code', 10);
             $table->enum('type', ['normal', 'vip'])->default('normal');
             $table->enum('status', ['available', 'booked'])->default('available');
-            
-            $table->index('showtime_id');
+            $table->decimal('price', 10, 2)->default(0);
+            $table->timestamps();
+
+            $table->foreign('room_id')->references('id')->on('rooms')->onDelete('cascade');
         });
     }
 

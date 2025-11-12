@@ -15,7 +15,7 @@ class CinemasSeeder extends Seeder
         Cinema::query()->delete();
 
         Cinema::factory()
-            ->count(5) // Tạo 5 rạp phim
+            ->count(30) // Tạo 5 rạp phim
             ->create();
     }
 }

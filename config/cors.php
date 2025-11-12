@@ -15,15 +15,15 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/poster/*'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'https://smart-ticket-client-chi.vercel.app',
+        'https://smart-ticket-client.onrender.com',
         'http://localhost:3000',
         'http://localhost:5173',
-        'https://smart-ticket-admin.vercel.app'
+        'https://smart-ticket-admin.onrender.com'
     ],
 
     'allowed_origins_patterns' => [],
