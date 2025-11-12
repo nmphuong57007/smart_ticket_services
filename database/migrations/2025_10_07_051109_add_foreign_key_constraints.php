@@ -73,9 +73,10 @@ return new class extends Migration
             $table->dropForeign(['user_id']);
         });
 
-        Schema::table('seats', function (Blueprint $table) {
-            $table->dropForeign(['showtime_id']);
-        });
+        // Schema::table('seats', function (Blueprint $table) {
+        //     $table->dropForeign(['room_id']);
+        // });
+
 
         Schema::table('reviews', function (Blueprint $table) {
             $table->dropForeign(['user_id']);

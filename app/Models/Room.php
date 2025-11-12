@@ -66,6 +66,7 @@ class Room extends Model
     /**
      * Quan hệ với seats thông qua showtimes
      */
+
     public function seats(): HasManyThrough
     {
         return $this->hasManyThrough(
@@ -76,6 +77,7 @@ class Room extends Model
             'id',           // khóa chính rooms
             'id'            // khóa chính showtimes
         );
+
     }
 
     /**
