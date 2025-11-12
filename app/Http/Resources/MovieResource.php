@@ -3,7 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 
@@ -17,7 +17,12 @@ class MovieResource extends JsonResource
         return [
             'id'           => $this->id,
             'title'        => $this->title,
-            'poster'       => $this->poster ? asset('storage/' . $this->poster) : null,
+
+            'poster' => $this->poster
+                ? (Str::startsWith($this->poster, ['http://', 'https://'])
+                    ? $this->poster
+                    : asset('storage/' . $this->poster))
+                : null,
             'trailer'      => $this->trailer,
             'description'  => $this->description,
 
