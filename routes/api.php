@@ -16,7 +16,6 @@ use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
-// use App\Http\Controllers\SeatReservationController;
 use App\Http\Controllers\GenreController;
 
 
