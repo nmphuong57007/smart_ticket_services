@@ -19,9 +19,10 @@ class DatabaseSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
         $this->call([
+ feat/promotions_post
             AdminUserSeeder::class,  // tạo user trước
             CinemasSeeder::class,      // tạo cinema trước rooms
-            // RoomsSeeder::class,      // tạo phòng trước
+           
             MoviesSeeder::class,     // tạo phim trước
             ShowtimesSeeder::class,  // tạo lịch chiếu sau khi có phòng & phim
             SeatSeeder::class,      // tạo ghế sau khi có lịch chiếu
@@ -30,6 +31,10 @@ class DatabaseSeeder extends Seeder
             ContentsSeeder::class,   // tạo news
             ProductCategorySeeder::class, // tạo category trước products
             ProductSeeder::class,    // tạo products sau khi có category
+
+            RoomsSeeder::class,
+            GenresSeeder::class,
+          
         ]);
 
         // Bật lại foreign key checks
