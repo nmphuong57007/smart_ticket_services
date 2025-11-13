@@ -16,7 +16,6 @@ use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
-use App\Http\Controllers\SeatReservationController;
 use App\Http\Controllers\GenreController;
 
 
@@ -198,9 +197,8 @@ Route::prefix('seats')->group(function () {
     Route::get('/',     [SeatController::class, 'index']);           // Danh sách ghế (có filter room_id, type, status)
     Route::get('/{id}', [SeatController::class, 'show'])->whereNumber('id'); // Chi tiết 1 ghế
 
-    // ghế theo phòng và theo lịch chiếu
+    // ghế theo phòng
     Route::get('/by-room/{roomId}',         [SeatController::class, 'getSeatsByRoom'])->whereNumber('roomId');
-    Route::get('/by-showtime/{showtimeId}', [SeatController::class, 'getSeatsByShowtime'])->whereNumber('showtimeId');
 
     // Admin only (CRUD)
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
@@ -213,17 +211,3 @@ Route::prefix('seats')->group(function () {
     });
 });
 
-// Protected routes: phải login
-Route::middleware(['api.auth', 'role:customer,admin,staff'])
-    ->prefix('seat-reservations')->group(function () {
-        Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
-        Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
-        Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
-
-        // Xem lịch sử đặt ghế của user
-        Route::get('/my-reservations', [SeatReservationController::class, 'myReservations'])->name('seat-reservations.my');
-        // Danh sách ghế theo suất chiếu
-        Route::get('/by-showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
-            ->whereNumber('showtimeId')
-            ->name('seat-reservations.by-showtime');
-    });
