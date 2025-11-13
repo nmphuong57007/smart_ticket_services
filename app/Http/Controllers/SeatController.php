@@ -20,12 +20,10 @@ class SeatController extends Controller
         $this->service = $service;
     }
 
-    /**
-     * LẤY DANH SÁCH GHẾ (FILTER + PAGINATION)
-     */
+    /** LẤY DANH SÁCH GHẾ */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['room_id', 'cinema_id', 'type', 'status', 'search', 'per_page']);
+        $filters = $request->only(['room_id', 'type', 'status', 'search', 'per_page']);
         $seats = $this->service->getSeats($filters);
 
         return response()->json([
@@ -43,18 +41,19 @@ class SeatController extends Controller
         ]);
     }
 
-    /**
-     * LẤY CHI TIẾT 1 GHẾ
-     */
+    /** CHI TIẾT GHẾ */
     public function show(int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
+
         if (!$seat) {
             return response()->json([
                 'success' => false,
                 'message' => 'Không tìm thấy ghế',
             ], Response::HTTP_NOT_FOUND);
         }
+
+        $seat->load('room.cinema');
 
         return response()->json([
             'success' => true,
@@ -63,12 +62,11 @@ class SeatController extends Controller
         ]);
     }
 
-    /**
-     * TẠO GHẾ MỚI
-     */
+    /** TẠO GHẾ */
     public function store(SeatStoreRequest $request): JsonResponse
     {
         $seat = $this->service->createSeat($request->validated());
+        $seat->load('room.cinema');
 
         return response()->json([
             'success' => true,
@@ -77,12 +75,11 @@ class SeatController extends Controller
         ], Response::HTTP_CREATED);
     }
 
-    /**
-     * CẬP NHẬT GHẾ
-     */
+    /** CẬP NHẬT GHẾ */
     public function update(SeatUpdateRequest $request, int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
+
         if (!$seat) {
             return response()->json([
                 'success' => false,
@@ -91,6 +88,7 @@ class SeatController extends Controller
         }
 
         $updated = $this->service->updateSeat($seat, $request->validated());
+        $updated->load('room.cinema');
 
         return response()->json([
             'success' => true,
@@ -99,12 +97,11 @@ class SeatController extends Controller
         ]);
     }
 
-    /**
-     * XOÁ GHẾ
-     */
+    /** XOÁ GHẾ */
     public function destroy(int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
+
         if (!$seat) {
             return response()->json([
                 'success' => false,
@@ -120,12 +117,12 @@ class SeatController extends Controller
         ]);
     }
 
-    /**
-     * LẤY DANH SÁCH GHẾ THEO PHÒNG
-     */
+    /** GHẾ THEO PHÒNG */
     public function getSeatsByRoom(int $roomId): JsonResponse
     {
         $seats = $this->service->getSeatsByRoom($roomId);
+
+        $seats->load('room.cinema');
 
         return response()->json([
             'success' => true,
@@ -134,12 +131,11 @@ class SeatController extends Controller
         ]);
     }
 
-    /**
-     * ĐỔI TRẠNG THÁI GHẾ (available, maintenance, disabled)
-     */
+    /** ĐỔI TRẠNG THÁI GHẾ */
     public function changeStatus(SeatChangeStatusRequest $request, int $id): JsonResponse
     {
         $seat = $this->service->getSeatById($id);
+
         if (!$seat) {
             return response()->json([
                 'success' => false,
@@ -148,6 +144,7 @@ class SeatController extends Controller
         }
 
         $updated = $this->service->changeStatus($seat, $request->validated()['status']);
+        $updated->load('room.cinema');
 
         return response()->json([
             'success' => true,

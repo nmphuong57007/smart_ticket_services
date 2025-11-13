@@ -20,9 +20,8 @@ class SeatFactory extends Factory
             : $this->faker->numberBetween(70000, 90000);
 
         return [
-            'cinema_id'  => $room->cinema_id,
-            'room_id'    => $room->id,
-            'seat_code'  => $this->faker->unique()->bothify('??##'),
+            'room_id'    => $room->id,  // ❗ giữ lại room_id
+            'seat_code'  => strtoupper($this->faker->unique()->bothify('??##')), // ghế giống A1, B10
             'type'       => $type,
             'status'     => $this->faker->randomElement(['available', 'booked']),
             'price'      => $price,

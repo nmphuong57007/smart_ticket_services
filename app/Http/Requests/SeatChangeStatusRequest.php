@@ -8,14 +8,13 @@ class SeatChangeStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Chỉ admin mới được phép thay đổi trạng thái ghế
-        return $this->user() && $this->user()->role === 'admin';
+        return true;
     }
 
     public function rules(): array
     {
         return [
-            'status' => ['required', 'string', 'in:available,maintenance,disabled'], 
+            'status' => ['required', 'string', 'in:available,maintenance,broken,disabled'],
         ];
     }
 
@@ -24,7 +23,7 @@ class SeatChangeStatusRequest extends FormRequest
         return [
             'status.required' => 'Trạng thái ghế là bắt buộc.',
             'status.string'   => 'Trạng thái ghế phải là chuỗi.',
-            'status.in'       => 'Trạng thái ghế không hợp lệ. (available, maintenance, disabled)',
+            'status.in'       => 'Trạng thái ghế không hợp lệ. (available, maintenance, broken, disabled)',
         ];
     }
 }

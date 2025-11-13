@@ -8,28 +8,28 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 class SeatService
 {
     /**
-     * Lấy danh sách ghế với các bộ lọc (phòng, rạp, loại, trạng thái)
+     * Lấy danh sách ghế với các bộ lọc (phòng, loại, trạng thái)
      */
     public function getSeats(array $filters = []): LengthAwarePaginator
     {
-        $query = Seat::with(['room', 'cinema']);
+        $query = Seat::with(['room']);
 
-        if (!empty($filters['cinema_id'])) {
-            $query->where('cinema_id', $filters['cinema_id']);
-        }
-
+        // Lọc theo phòng
         if (!empty($filters['room_id'])) {
             $query->where('room_id', $filters['room_id']);
         }
 
+        // Lọc theo loại ghế
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
+        // Lọc theo trạng thái (available, maintenance, broken…)
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
+        // Tìm theo seat_code
         if (!empty($filters['search'])) {
             $query->where('seat_code', 'like', "%{$filters['search']}%");
         }
@@ -38,11 +38,11 @@ class SeatService
     }
 
     /**
-     * Lấy thông tin chi tiết 1 ghế
+     * Lấy thông tin 1 ghế
      */
     public function getSeatById(int $id): ?Seat
     {
-        return Seat::with(['room', 'cinema'])->find($id);
+        return Seat::with(['room'])->find($id);
     }
 
     /**
@@ -51,7 +51,7 @@ class SeatService
     public function getSeatsByRoom(int $roomId)
     {
         return Seat::where('room_id', $roomId)
-            ->with(['room', 'cinema'])
+            ->with(['room'])
             ->orderBy('seat_code')
             ->get();
     }
@@ -76,7 +76,7 @@ class SeatService
     }
 
     /**
-     * Thay đổi trạng thái ghế (available, maintenance, disabled)
+     * Thay đổi trạng thái ghế vật lý (available, maintenance, broken, disabled)
      */
     public function changeStatus(Seat $seat, string $status): Seat
     {

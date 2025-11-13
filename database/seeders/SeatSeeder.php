@@ -30,11 +30,11 @@ class SeatSeeder extends Seeder
                 if (!is_array($row)) continue;
 
                 foreach ($row as $seatCode) {
+
                     $type = rand(0, 4) === 0 ? 'vip' : 'normal'; // 20% ghế VIP
-                    $price = $type === 'vip' ? 120000 : 80000;   // giá cố định
+                    $price = $type === 'vip' ? 120000 : 80000;
 
                     $seatData[] = [
-                        'cinema_id'  => $room->cinema_id,
                         'room_id'    => $room->id,
                         'seat_code'  => $seatCode,
                         'type'       => $type,
@@ -47,7 +47,7 @@ class SeatSeeder extends Seeder
             }
         }
 
-        // Chia nhỏ insert để tránh lỗi MySQL max packet
+        // Chia nhỏ insert để tránh lỗi max packet
         foreach (array_chunk($seatData, 5000) as $chunk) {
             DB::table('seats')->insert($chunk);
         }
