@@ -196,18 +196,3 @@ Route::prefix('seats')->group(function () {
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
     });
 });
-
-// // Protected routes: phải login
-// Route::middleware(['api.auth', 'role:customer,admin,staff'])
-//     ->prefix('seat-reservations')->group(function () {
-//         Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
-//         Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
-//         Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
-
-//         // Xem lịch sử đặt ghế của user
-//         Route::get('/my-reservations', [SeatReservationController::class, 'myReservations'])->name('seat-reservations.my');
-//         // Danh sách ghế theo suất chiếu
-//         Route::get('/by-showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
-//             ->whereNumber('showtimeId')
-//             ->name('seat-reservations.by-showtime');
-//     });

@@ -26,7 +26,6 @@ class DatabaseSeeder extends Seeder
             MoviesSeeder::class,
             ShowtimesSeeder::class,
             SeatSeeder::class,
-            SeatReservationsSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
             ContentsSeeder::class,
