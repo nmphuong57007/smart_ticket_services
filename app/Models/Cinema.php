@@ -9,18 +9,14 @@ class Cinema extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    protected $fillable = ['name', 'address', 'phone', 'status']; // + status
 
-    protected $fillable = [
-        'name',
-        'address',
-        'phone',
-        'created_at',
-    ];
+    // (tuỳ chọn) scope lọc active
+    public function scopeActive($q)
+    {
+        return $q->where('status', 'active');
+    }
 
-    /**
-     * Lấy danh sách phòng của rạp
-     */
     public function rooms()
     {
         return $this->hasMany(Room::class);
