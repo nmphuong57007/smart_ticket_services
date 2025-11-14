@@ -3,14 +3,24 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use App\Models\Genre;
 
 class GenresSeeder extends Seeder
 {
     public function run(): void
     {
-        // Xóa dữ liệu cũ
+        // Tạm tắt kiểm tra khóa ngoại để tránh lỗi truncate
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+        // Xóa dữ liệu bảng pivot trước (movie_genre có FK tới genres)
+        DB::table('movie_genre')->truncate();
+
+        // Xóa bảng genres
         Genre::truncate();
+
+        // Bật lại kiểm tra khóa ngoại
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // Danh sách thể loại mẫu
         $genres = [
@@ -31,6 +41,7 @@ class GenresSeeder extends Seeder
             'Giả tưởng',
         ];
 
+        // Thêm dữ liệu
         foreach ($genres as $name) {
             Genre::create([
                 'name' => $name,
@@ -38,6 +49,6 @@ class GenresSeeder extends Seeder
             ]);
         }
 
-        echo "Đã seed " . count($genres) . " thể loại phim.\n";
+        $this->command->info('✅ Đã seed ' . count($genres) . ' thể loại phim thành công.');
     }
 }

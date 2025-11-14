@@ -17,7 +17,6 @@ use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 
 use App\Http\Controllers\SeatController;
-use App\Http\Controllers\SeatReservationController;
 use App\Http\Controllers\GenreController;
 
 
@@ -122,14 +121,29 @@ Route::prefix('showtimes')->group(function () {
     Route::get('/movie/{movieId}/full', [ShowtimeController::class, 'fullShowtimesByMovie']); // full showtimes theo phim
 });
 
-// Cinema routes
+// Cinema routes (Quản lý rạp chiếu phim)
 Route::prefix('cinemas')->group(function () {
-    Route::get('/', [CinemaController::class, 'index']);       // Lấy danh sách rạp
-    Route::get('/statistics', [CinemaController::class, 'statistics']);  // Thống kê tổng quan
-    Route::get('/{id}', [CinemaController::class, 'show']);        // Chi tiết 1 rạp
-    Route::get('/{cinemaId}/rooms', [CinemaController::class, 'rooms']);       // Danh sách phòng của rạp
-    Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes']);   // Danh sách lịch chiếu của rạp
+
+    // Public: Xem danh sách rạp và chi tiết
+    Route::get('/', [CinemaController::class, 'index']);                    // Lọc + phân trang (dùng CinemaFilterValidator)
+    Route::get('/{id}', [CinemaController::class, 'show'])->whereNumber('id');  // Chi tiết 1 rạp
+
+    // Staff & Admin: Xem thống kê
+    Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
+        Route::get('/statistics', [CinemaController::class, 'statistics']);      // Thống kê tổng quan
+        Route::get('/{cinemaId}/rooms', [CinemaController::class, 'rooms'])->whereNumber('cinemaId'); // Phòng theo rạp
+        Route::get('/{cinemaId}/showtimes', [CinemaController::class, 'showtimes'])->whereNumber('cinemaId'); // Lịch chiếu theo rạp
+    });
+
+    // Admin-only: CRUD đầy đủ
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::post('/', [CinemaController::class, 'store']);                   // Tạo mới rạp
+        Route::put('/{id}', [CinemaController::class, 'update'])->whereNumber('id'); // Cập nhật thông tin
+        Route::patch('/{id}/status', [CinemaController::class, 'changeStatus'])->whereNumber('id'); // Đổi trạng thái
+        Route::delete('/{id}', [CinemaController::class, 'destroy'])->whereNumber('id'); // Xóa rạp
+    });
 });
+
 
 // Discount routes
 Route::prefix('discounts')->middleware('api.auth')->group(function () {
@@ -215,9 +229,8 @@ Route::prefix('seats')->group(function () {
     Route::get('/',     [SeatController::class, 'index']);           // Danh sách ghế (có filter room_id, type, status)
     Route::get('/{id}', [SeatController::class, 'show'])->whereNumber('id'); // Chi tiết 1 ghế
 
-    // ghế theo phòng và theo lịch chiếu
+    // ghế theo phòng
     Route::get('/by-room/{roomId}',         [SeatController::class, 'getSeatsByRoom'])->whereNumber('roomId');
-    Route::get('/by-showtime/{showtimeId}', [SeatController::class, 'getSeatsByShowtime'])->whereNumber('showtimeId');
 
     // Admin only (CRUD)
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
@@ -230,6 +243,7 @@ Route::prefix('seats')->group(function () {
     });
 });
 
+ feat/promotions_post
 // Protected routes: phải login
 Route::middleware(['api.auth', 'role:customer,admin,staff'])
     ->prefix('seat-reservations')->group(function () {
