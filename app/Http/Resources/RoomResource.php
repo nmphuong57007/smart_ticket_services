@@ -11,11 +11,13 @@ class RoomResource extends JsonResource
         return [
             'id' => $this->id,
             'cinema_id' => $this->cinema_id,
-            'cinema' => $this->whenLoaded('cinema', [
-                'id' => $this->cinema?->id,
-                'name' => $this->cinema?->name,
-                'address' => $this->cinema?->address ?? null,
-            ]),
+            'cinema' => $this->whenLoaded('cinema', function () {
+                return [
+                    'id' => $this->cinema->id,
+                    'name' => $this->cinema->name,
+                    'address' => $this->cinema->address,
+                ];
+            }),
             'name' => $this->name,
             'seat_map' => $this->seat_map,
             'total_seats' => $this->total_seats,
