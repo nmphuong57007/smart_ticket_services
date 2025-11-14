@@ -34,7 +34,7 @@ class MoviesSeeder extends Seeder
         $genreIds = Genre::pluck('id')->toArray();
 
         // ✅ Tạo 20 phim mẫu, gán ngẫu nhiên 1-3 thể loại
-        Movie::factory(20)->create()->each(function ($movie) use ($genreIds) {
+        Movie::factory(100)->create()->each(function ($movie) use ($genreIds) {
             $randomGenres = collect($genreIds)->random(rand(1, 3))->toArray();
             $movie->genres()->sync($randomGenres);
         });
