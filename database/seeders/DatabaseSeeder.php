@@ -2,9 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Content;
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -15,22 +12,26 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Tắt foreign key checks để tăng tốc seeding
+        // Tạm tắt kiểm tra khóa ngoại để tránh lỗi khi truncate
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
 
+        // Gọi các seeder theo thứ tự logic (quan hệ phụ thuộc)
         $this->call([
-            AdminUserSeeder::class,  // tạo user trước
-            CinemasSeeder::class,      // tạo cinema trước rooms
-            RoomsSeeder::class,      // tạo phòng trước
-            MoviesSeeder::class,     // tạo phim trước
-            ShowtimesSeeder::class,  // tạo lịch chiếu sau khi có phòng & phim
-            SeatSeeder::class,      // tạo ghế sau khi có lịch chiếu
-            PointsHistorySeeder::class, // tạo lịch sử điểm
-            ComboSeeder::class,      // tạo combo
-            ContentsSeeder::class,   // tạo news
+            AdminUserSeeder::class,
+            CinemasSeeder::class,
+            RoomsSeeder::class,
+            GenresSeeder::class,
+            MoviesSeeder::class,
+            ShowtimesSeeder::class,
+            SeatSeeder::class,
+            PointsHistorySeeder::class,
+            ComboSeeder::class,
+            ContentsSeeder::class,       
         ]);
 
-        // Bật lại foreign key checks
+        // Bật lại kiểm tra khóa ngoại
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        $this->command->info("✅ Database đã được seed đầy đủ thành công!");
     }
 }

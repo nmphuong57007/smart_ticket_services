@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Cinema;
+use Illuminate\Support\Facades\DB;
 
 class CinemasSeeder extends Seeder
 {
@@ -12,10 +13,18 @@ class CinemasSeeder extends Seeder
      */
     public function run(): void
     {
-        Cinema::query()->delete();
+        // Xóa dữ liệu cũ an toàn hơn (tránh lỗi khóa ngoại)
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Cinema::truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        // Tạo dữ liệu giả
+        $count = 30;
 
         Cinema::factory()
-            ->count(30) // Tạo 5 rạp phim
+            ->count($count)
             ->create();
+
+        $this->command->info("✅ Đã tạo {$count} rạp phim thành công!");
     }
 }

@@ -16,7 +16,11 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->string('address')->nullable();
             $table->string('phone', 20)->nullable();
-            $table->timestamp('created_at')->nullable()->useCurrent();
+            // thêm cột status tại đây
+            $table->enum('status', ['active', 'inactive'])
+                ->default('active');
+
+            $table->timestamps();
         });
     }
 
