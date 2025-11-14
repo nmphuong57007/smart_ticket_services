@@ -34,6 +34,10 @@ class MovieService
                 $query->whereHas('genres', fn($q) => $q->where('genres.id', $genreId));
             })
 
+            ->when($filters['genre_slug'] ?? null, function ($query, $genreSlug) {
+                $query->whereHas('genres', fn($q) => $q->where('genres.slug', $genreSlug));
+            })
+
             ->orderBy($sortBy, $sortOrder)
             ->paginate($filters['per_page'] ?? 15);
     }

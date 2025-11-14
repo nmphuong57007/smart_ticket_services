@@ -37,6 +37,7 @@ class MovieController extends Controller
                 'search' => $request->query('search'),
                 'status' => $request->query('status'),
                 'genre_id' => $request->query('genre_id'),
+                'genre_slug' => $request->query('genre_slug'),
                 'language' => $request->query('language'),
                 'sort_by' => $request->query('sort_by', 'id'),
                 'sort_order' => $request->query('sort_order', 'asc'),
