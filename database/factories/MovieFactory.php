@@ -15,11 +15,13 @@ class MovieFactory extends Factory
     {
         $faker = \Faker\Factory::create('vi_VN');
 
-        $genres = ['Hành động', 'Khoa học viễn tưởng', 'Hài', 'Kinh dị', 'Lãng mạn', 'Phiêu lưu', 'Hoạt hình', 'Chiến tranh'];
         $formats = ['2D', '3D', 'IMAX', '4DX'];
         $statuses = ['coming', 'showing', 'stopped'];
+        $languages = ['dub', 'sub', 'narrated'];
 
-        $chosenGenres = $faker->randomElements($genres, 2);
+        // Ngày chiếu
+        $releaseDate = $faker->dateTimeBetween('-1 year', '+3 months');
+        $endDate = $faker->dateTimeBetween($releaseDate, '+6 months');
 
         return [
             'title' => $faker->sentence(3),
@@ -32,9 +34,12 @@ class MovieFactory extends Factory
             'description' => $faker->paragraph(5),
             'duration' => $faker->numberBetween(90, 160),
             'format' => $faker->randomElement($formats),
-            'release_date' => $faker->dateTimeBetween('-1 year', '+3 months')->format('Y-m-d'),
+            'language'      => $faker->randomElement($languages),
+            'release_date'  => $releaseDate->format('Y-m-d'),
+            'end_date'      => $endDate->format('Y-m-d'),
             'status' => $faker->randomElement($statuses),
-            'created_at' => $faker->dateTimeBetween('-1 year', 'now')
+            'created_at'    => now(),
+            'updated_at' => now(),
         ];
     }
 }
