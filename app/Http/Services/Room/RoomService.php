@@ -24,7 +24,7 @@ class RoomService
         }
 
         return Room::query()
-            ->with('cinema:id,name')
+            ->with('cinema:id,name,address')
             ->when($filters['cinema_id'] ?? null, fn($q, $v) => $q->where('cinema_id', $v))
             ->when($filters['search'] ?? null, fn($q, $v) => $q->where('name', 'like', "%{$v}%"))
             ->when($filters['status'] ?? null, fn($q, $v) => $q->where('status', $v))
@@ -36,7 +36,7 @@ class RoomService
     public function getRoomById(int $id): ?Room
     {
         try {
-            return Room::with('cinema:id,name')->findOrFail($id);
+            return Room::with('cinema:id,name,address')->findOrFail($id);
         } catch (ModelNotFoundException) {
             return null;
         }
@@ -62,7 +62,7 @@ class RoomService
             }
 
             $room->update($data);
-            return $room->fresh(['cinema:id,name']);
+            return $room->fresh(['cinema:id,name,address']);
         });
     }
 
@@ -76,7 +76,7 @@ class RoomService
     public function getRoomsByCinema(int $cinemaId): Collection
     {
         return Room::where('cinema_id', $cinemaId)
-            ->with('cinema:id,name')
+            ->with('cinema:id,name,address')
             ->orderBy('name')
             ->get();
     }
@@ -169,7 +169,7 @@ class RoomService
     public function getStatisticsByCinemaId(int $cinemaId): ?array
     {
         $cinemaRooms = Room::where('cinema_id', $cinemaId)
-            ->with('cinema:id,name')
+            ->with('cinema:id,name,address')
             ->get();
 
         if ($cinemaRooms->isEmpty()) {
@@ -180,6 +180,7 @@ class RoomService
             'cinema' => [
                 'id' => $cinemaRooms->first()->cinema->id ?? null,
                 'name' => $cinemaRooms->first()->cinema->name ?? null,
+                'address' => $cinemaRooms->first()->cinema->address ?? null,
             ],
             'total_rooms' => $cinemaRooms->count(),
             'active_rooms' => $cinemaRooms->where('status', 'active')->count(),
