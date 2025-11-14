@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use PHPUnit\Framework\Attributes\Ticket;
 
 class Showtime extends Model
 {
@@ -44,5 +45,9 @@ class Showtime extends Model
             'room_id',     // khóa ngoại ở Showtime (Showtime.room_id)
             'id'           // khóa chính ở Room (Room.id)
         );
+    }
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class);
     }
 }

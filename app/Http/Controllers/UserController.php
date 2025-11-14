@@ -146,11 +146,10 @@ class UserController extends Controller
 
     /**
      * Update user information (admin only)
-     */
-    public function update(Request $request, $id)
+     */ public function update(Request $request, $id)
     {
         try {
-            // Check if user has admin role
+            // Kiểm tra quyền cập nhật
             if (!$this->userService->hasPermission($request->user(), 'update_user')) {
                 return response([
                     'success' => false,
@@ -160,6 +159,7 @@ class UserController extends Controller
 
             $user = $this->userService->findUserById($id);
 
+            // Validate dữ liệu gửi lên
             $validationResult = $this->updateUserValidator->setUserId($id)->validateWithStatus($request->all());
             if (!$validationResult['success']) {
                 return response([
@@ -169,8 +169,28 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // Update user (chỉ cho phép cập nhật thông tin cơ bản)
-            $updatedUser = $this->userService->updateUser($user, $request->only(['fullname', 'email', 'phone', 'address', 'gender']));
+            // --- PHÂN QUYỀN: chỉ admin mới được đổi role ---
+            $currentUser = $request->user();
+
+            $updateData = $request->only(['fullname', 'email', 'phone', 'address', 'gender']);
+
+            if ($currentUser->role === 'admin') {
+                // Admin có thể cập nhật cả vai trò
+                if ($request->has('role')) {
+                    $updateData['role'] = $request->role;
+                }
+            } else {
+                // Người dùng khác (staff/customer) không được đổi role
+                if ($request->has('role') && $request->role !== $user->role) {
+                    return response([
+                        'success' => false,
+                        'message' => 'Chỉ quản trị viên mới có thể thay đổi phân quyền người dùng.'
+                    ], 403);
+                }
+            }
+
+            // Cập nhật user
+            $updatedUser = $this->userService->updateUser($user, $updateData);
 
             return response([
                 'success' => true,
