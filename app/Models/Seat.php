@@ -10,6 +10,12 @@ class Seat extends Model
     use HasFactory;
 
     protected $fillable = [
+ feat/promotions_post
+
+
+        'cinema_id',
+
+
         'room_id',
         'seat_code',
         'type',

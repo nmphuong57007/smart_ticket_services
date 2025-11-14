@@ -66,9 +66,18 @@ class Room extends Model
     /**
      * Quan hệ với seats thông qua showtimes
      */
-    public function seats()
+
+    public function seats(): HasManyThrough
     {
-        return $this->hasMany(Seat::class);
+        return $this->hasManyThrough(
+            Seat::class,
+            Showtime::class,
+            'room_id',      // khóa ngoại showtimes
+            'showtime_id',  // khóa ngoại seats
+            'id',           // khóa chính rooms
+            'id'            // khóa chính showtimes
+        );
+
     }
 
     /**

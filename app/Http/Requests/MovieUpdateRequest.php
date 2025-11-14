@@ -9,7 +9,9 @@ class MovieUpdateRequest extends FormRequest
     public function authorize()
     {
 
+
         return $this->user() && in_array($this->user()->role, ['admin', 'staff']);
+
 
     }
 

@@ -15,6 +15,7 @@ use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
+
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\GenreController;
 
@@ -25,6 +26,7 @@ Route::get(
     '/health-check',
     fn() => response()->json(['status' => 'OK'], 200)
 );
+
 
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
@@ -85,10 +87,10 @@ Route::prefix('movies')->group(function () {
 
     // Admin-only (toàn quyền)
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
-        Route::post('/',             [MovieController::class, 'store']);        // Thêm phim mới
-        Route::put('/{id}',          [MovieController::class, 'update']);       // Cập nhật phim
+        Route::post('/', [MovieController::class, 'store']);        // Thêm phim mới
+        Route::put('/{id}', [MovieController::class, 'update']);       // Cập nhật phim
         Route::patch('/{id}/status', [MovieController::class, 'changeStatus']); // Đổi trạng thái phim
-        Route::delete('/{id}',       [MovieController::class, 'destroy']);      // Xóa phim
+        Route::delete('/{id}', [MovieController::class, 'destroy']);      // Xóa phim
     });
 });
 
@@ -152,12 +154,40 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
     Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
 });
 
-// Combo routes
-Route::prefix('combos')->group(function () {
-    Route::get('/', [ComboController::class, 'index']); // danh sách public
-    Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Route Tồn kho (Inventory Routes)
+    Route::prefix('admin/fb/inventory')->group(function () {
+        Route::get('/', [InventoryController::class, 'index']); // xem danh sách tồn
+        Route::post('/{id}/adjust', [InventoryController::class, 'adjust']); // nhập/xuất
+        Route::get('/{id}/history', [InventoryController::class, 'history']); // lịch sử
+    });
+
+    // Combo routes
+
+    Route::prefix('admin/fb/combos')->group(function () {
+        Route::get('/', [ComboController::class, 'index']); // danh sách public
+        Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
+        Route::post('/', [ComboController::class, 'store']);
+        Route::put('/{id}', [ComboController::class, 'update']);
+        Route::delete('/{id}', [ComboController::class, 'destroy']);
+    });
+
+
+    // ... bên trong Route::middleware('auth:sanctum')->group(function () { ...
+
+    // Promotion Post Routes (Quản lý Bài viết Khuyến mãi)
+    Route::prefix('admin/promotion-posts')->group(function () {
+        Route::get('/', [PromotionPostController::class, 'index']);      // Danh sách
+        Route::post('/', [PromotionPostController::class, 'store']);     // Tạo mới (Có Upload ảnh)
+        Route::get('/{id}', [PromotionPostController::class, 'show']);   // Chi tiết
+        Route::post('/{id}', [PromotionPostController::class, 'update']); // Cập nhật
+        Route::delete('/{id}', [PromotionPostController::class, 'destroy']); // Xóa
+    });
 });
+
 
 
 // Public route xem thông tin vé trước khi đặt
@@ -165,9 +195,10 @@ Route::get('tickets/preview', [TicketController::class, 'preview']);
 
 // Content routes
 Route::prefix('contents')->group(function () {
-    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
+    Route::get('/', [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
     Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
 });
+
 // Room routes
 Route::prefix('rooms')->group(function () {
     // Public routes (ai cũng xem được)
@@ -191,6 +222,7 @@ Route::prefix('rooms')->group(function () {
     });
 });
 
+
 // Seat routes
 Route::prefix('seats')->group(function () {
     // Public (ai cũng có thể xem ghế)
@@ -209,5 +241,21 @@ Route::prefix('seats')->group(function () {
         // đổi trạng thái ghế
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
     });
+});
+
+ feat/promotions_post
+// Protected routes: phải login
+Route::middleware(['api.auth', 'role:customer,admin,staff'])
+    ->prefix('seat-reservations')->group(function () {
+        Route::post('/reserve', [SeatReservationController::class, 'reserveSeats'])->name('seat-reservations.reserve');  // Giữ ghế tạm thời
+        Route::post('/confirm', [SeatReservationController::class, 'confirmBooking'])->name('seat-reservations.confirm'); // Xác nhận đặt ghế
+        Route::post('/release', [SeatReservationController::class, 'releaseSeats'])->name('seat-reservations.release');  // Hủy giữ ghế
+
+        // Xem lịch sử đặt ghế của user
+        Route::get('/my-reservations', [SeatReservationController::class, 'myReservations'])->name('seat-reservations.my');
+        // Danh sách ghế theo suất chiếu
+        Route::get('/by-showtime/{showtimeId}', [SeatReservationController::class, 'getSeatsByShowtime'])
+            ->whereNumber('showtimeId')
+            ->name('seat-reservations.by-showtime');
 });
 
