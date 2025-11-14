@@ -2,8 +2,10 @@
 
 namespace App\Http\Services\Combo;
 
+use App\Models\ComboItem;
 use App\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ComboService
 {
@@ -44,5 +46,65 @@ class ComboService
     public function getComboById(int $id): ?Product
     {
         return Product::combos()->find($id);
+    }
+    public function createCombo(array $data)
+    {
+        return DB::transaction(function () use ($data) {
+            $combo = Product::create([
+                'name' => $data['name'],
+                'price' => $data['price'],
+                'type' => 'combo',
+                'category_id' => 3,
+                'stock' => 0,
+                'is_active' => 1,
+            ]);
+
+            foreach ($data['items'] as $item) {
+                ComboItem::create([
+                    'combo_id' => $combo->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity']
+                ]);
+            }
+
+            return $combo->load('comboItems.product');
+        });
+    }
+
+    public function updateCombo(int $id, array $data)
+    {
+        return DB::transaction(function () use ($id, $data) {
+            $combo = Product::where('type', 'combo')->find($id);
+            if (!$combo) return null;
+
+            $combo->update([
+                'name' => $data['name'],
+                'price' => $data['price'],
+            ]);
+
+            ComboItem::where('combo_id', $combo->id)->delete();
+
+            foreach ($data['items'] as $item) {
+                ComboItem::create([
+                    'combo_id' => $combo->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity']
+                ]);
+            }
+
+            return $combo->load('comboItems.product');
+        });
+    }
+
+    public function deleteCombo(int $id)
+    {
+        $combo = Product::where('type', 'combo')->find($id);
+        if (!$combo) return false;
+
+        return DB::transaction(function () use ($combo) {
+            ComboItem::where('combo_id', $combo->id)->delete();
+            $combo->delete();
+            return true;
+        });
     }
 }
