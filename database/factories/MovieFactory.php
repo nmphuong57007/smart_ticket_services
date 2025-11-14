@@ -25,7 +25,7 @@ class MovieFactory extends Factory
             'title' => $faker->sentence(3),
 
 
-            'poster' => 'https://placehold.co/400/600',
+            'poster' => 'https://placehold.co/400x600',
             'trailer' => 'https://www.youtube.com/watch?v=jCHv_mLCSJA',
 
 
