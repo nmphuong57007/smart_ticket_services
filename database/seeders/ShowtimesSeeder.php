@@ -30,13 +30,16 @@ class ShowtimesSeeder extends Seeder
 
         $showtimeData = [];
 
+        $days = (int) config('seeder.showtime_days', 7) * (int) config('seeder.multiplier', 1);
+
         foreach ($rooms as $room) {
-            // Mỗi phòng chiếu trong 7 ngày tới
-            for ($i = 0; $i < 7; $i++) {
+            // Mỗi phòng chiếu trong $days tới
+            for ($i = 0; $i < $days; $i++) {
                 $showDate = now()->addDays($i)->format('Y-m-d');
 
-                // Mỗi ngày, phòng chiếu ngẫu nhiên 2 phim khác nhau
-                $dailyMovies = $movies->random(2);
+                // Mỗi ngày, phòng chiếu ngẫu nhiên 1-3 phim khác nhau (tăng density khi scale lớn)
+                $numDailyMovies = rand(1, min(3, max(1, (int) ($movies->count()))));
+                $dailyMovies = $movies->random($numDailyMovies);
 
                 foreach ($dailyMovies as $movie) {
                     // Mỗi phim có 3–5 suất chiếu khác nhau trong ngày

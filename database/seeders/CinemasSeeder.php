@@ -18,8 +18,8 @@ class CinemasSeeder extends Seeder
         Cinema::truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        // Tạo dữ liệu giả
-        $count = 30;
+        // Tạo dữ liệu giả theo cấu hình
+        $count = (int) config('seeder.cinemas', 30) * (int) config('seeder.multiplier', 1);
 
         Cinema::factory()
             ->count($count)

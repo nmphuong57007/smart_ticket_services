@@ -14,8 +14,10 @@ class ContentsSeeder extends Seeder
     {
         Content::query()->delete();
 
+        $count = (int) config('seeder.contents', 20) * (int) config('seeder.multiplier', 1);
+
         Content::factory()
-            ->count(20)
+            ->count($count)
             ->create();
     }
 }
