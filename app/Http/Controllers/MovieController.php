@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Showtime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Resources\MovieResource;
@@ -173,6 +174,14 @@ class MovieController extends Controller
             return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
         }
 
+        $hasShowtimes = Showtime::where('movie_id', $movie->id)->exists();
+
+        if ($hasShowtimes) {
+            return response([
+                'success' => false,
+                'message' => 'Không thể xóa phim vì đang có lịch chiếu.'
+            ], 400);
+        }
 
         // Xóa poster an toàn
         if ($movie->poster && Storage::disk('public')->exists($movie->poster)) {
