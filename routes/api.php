@@ -12,7 +12,6 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
 
 use App\Http\Controllers\ShowtimeController;
-use App\Http\Controllers\Admin\ShowtimeController as AdminShowtimeController;
 use App\Http\Controllers\CinemaController;
 use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
@@ -108,28 +107,21 @@ Route::prefix('genres')->group(function () {
     });
 });
 
-
-
 // Showtime routes
 Route::prefix('showtimes')->group(function () {
-    Route::get('/', [ShowtimeController::class, 'index']);     // Lấy danh sách lịch chiếu với filter & pagination
-    Route::get('/rooms', [ShowtimeController::class, 'rooms']);     // Lấy tất cả phòng có lịch chiếu
-    Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Lấy các ngày chiếu của một phòng
-    Route::get('/by-date', [ShowtimeController::class, 'getByDate']);         // Lấy lịch chiếu theo ngày
-    Route::get('/by-date-language', [ShowtimeController::class, 'getByDateLanguage']); // Lấy lịch chiếu theo ngày + ngôn ngữ
-    Route::get('/movie/{movieId}/full', [ShowtimeController::class, 'fullShowtimesByMovie']); // full showtimes theo phim
-});
 
-// Cinema routes (Quản lý rạp chiếu phim)
-Route::prefix('admin')->middleware(['api.auth'])->group(function () {
-    Route::middleware('role:admin,staff')->group(function () {
-        Route::get('/showtimes', [AdminShowtimeController::class, 'index']);
-        Route::post('/showtimes', [AdminShowtimeController::class, 'store']);
-        Route::put('/showtimes/{id}', [AdminShowtimeController::class, 'update']);
-    });
+    // PUBLIC (không cần đăng nhập)
+    Route::get('/', [ShowtimeController::class, 'index']);            // List + filter
+    Route::get('/rooms', [ShowtimeController::class, 'rooms']);       // Phòng đang có suất chiếu
+    Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates']); // Ngày chiếu của phòng
+    Route::get('/statistics', [ShowtimeController::class, 'statistics']);     // Thống kê lịch chiếu
 
-    Route::middleware('role:admin')->group(function () {
-        Route::delete('/showtimes/{id}', [AdminShowtimeController::class, 'destroy']);
+    // ADMIN ONLY: CRUD LỊCH CHIẾU
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+
+        Route::post('/', [ShowtimeController::class, 'store']);       // Tạo suất chiếu
+        Route::put('/{id}', [ShowtimeController::class, 'update']);   // Cập nhật
+        Route::delete('/{id}', [ShowtimeController::class, 'destroy']); // Xoá
     });
 });
 

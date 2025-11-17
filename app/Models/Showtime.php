@@ -4,17 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use PHPUnit\Framework\Attributes\Ticket;
 
 class Showtime extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
-
     protected $fillable = [
         'movie_id',
         'room_id',
+        'cinema_id',
         'show_date',
         'show_time',
         'price',
@@ -22,32 +20,36 @@ class Showtime extends Model
         'language_type',
     ];
 
-    // Lấy thông tin phim
+    /**
+     * Quan hệ: Lịch chiếu -> Phim
+     */
     public function movie()
     {
         return $this->belongsTo(Movie::class);
     }
 
-    // Lấy thông tin phòng chiếu
+    /**
+     * Quan hệ: Lịch chiếu -> Phòng chiếu
+     */
     public function room()
     {
         return $this->belongsTo(Room::class);
     }
 
-    // Lấy ghế thông qua phòng chiếu
-    public function seats()
+    /**
+     * Quan hệ: Lịch chiếu -> Rạp chiếu
+     */
+    public function cinema()
     {
-        return $this->hasManyThrough(
-            Seat::class,   // Model cuối cùng
-            Room::class,   // Model trung gian
-            'id',          // khóa chính ở Room (Room.id)
-            'room_id',     // khóa ngoại ở Seat (Seat.room_id)
-            'room_id',     // khóa ngoại ở Showtime (Showtime.room_id)
-            'id'           // khóa chính ở Room (Room.id)
-        );
+        return $this->belongsTo(Cinema::class);
     }
-    public function tickets()
+
+    /**
+     * Lấy danh sách ghế của phòng (không phải ghế theo suất chiếu)
+     * Dùng khi hiển thị sơ đồ ghế phòng.
+     */
+    public function getRoomSeatsAttribute()
     {
-        return $this->hasMany(Ticket::class);
+        return $this->room?->seats ?? collect();
     }
 }
