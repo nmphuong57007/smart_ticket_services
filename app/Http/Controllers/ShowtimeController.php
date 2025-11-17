@@ -8,7 +8,6 @@ use App\Http\Validator\Showtime\ShowtimeFilterValidator;
 use App\Http\Requests\Showtime\StoreShowtimeRequest;
 use App\Http\Requests\Showtime\UpdateShowtimeRequest;
 use App\Http\Resources\ShowtimeResource;
-use App\Http\Resources\ShowtimeCollection;
 
 class ShowtimeController extends Controller
 {
@@ -22,6 +21,7 @@ class ShowtimeController extends Controller
         $this->service   = $service;
         $this->validator = $validator;
     }
+
 
     /**
      * Danh sách lịch chiếu (lọc + phân trang)
@@ -51,15 +51,58 @@ class ShowtimeController extends Controller
 
         $showtimes = $this->service->getShowtimes($filters);
 
-        return new ShowtimeCollection($showtimes);
+        return response()->json([
+            'items' => ShowtimeResource::collection($showtimes->items()),
+            'pagination' => [
+                'page'      => $showtimes->currentPage(),
+                'per_page'  => $showtimes->perPage(),
+                'total'     => $showtimes->total(),
+                'last_page' => $showtimes->lastPage(),
+            ]
+        ]);
     }
+
+
+    /**
+     * Tự động decode message JSON khi service throw exception
+     */
+    private function decodeException(\Exception $e)
+    {
+        $msg = json_decode($e->getMessage(), true);
+
+        // Trường hợp message KHÔNG phải JSON → trả về mặc định
+        if (!is_array($msg)) {
+            return [
+                'message'  => $e->getMessage(),
+                'conflict' => null
+            ];
+        }
+
+        // Trường hợp là JSON hợp lệ (message + conflict)
+        return [
+            'message'  => $msg['message'] ?? 'Có lỗi xảy ra',
+            'conflict' => $msg['conflict'] ?? null
+        ];
+    }
+
 
     /**
      * Tạo suất chiếu
      */
     public function store(StoreShowtimeRequest $request)
     {
-        $showtime = $this->service->createShowtime($request->validated());
+        try {
+            $showtime = $this->service->createShowtime($request->validated());
+        } catch (\Exception $e) {
+
+            $err = $this->decodeException($e);
+
+            return response()->json([
+                'success'  => false,
+                'message'  => $err['message'],
+                'conflict' => $err['conflict']
+            ], 409);
+        }
 
         return response()->json([
             'success' => true,
@@ -67,6 +110,7 @@ class ShowtimeController extends Controller
             'data'    => new ShowtimeResource($showtime)
         ], 201);
     }
+
 
     /**
      * Cập nhật suất chiếu
@@ -76,10 +120,14 @@ class ShowtimeController extends Controller
         try {
             $updated = $this->service->updateShowtime($id, $request->validated());
         } catch (\Exception $e) {
+
+            $err = $this->decodeException($e);
+
             return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 409); // conflict
+                'success'  => false,
+                'message'  => $err['message'],
+                'conflict' => $err['conflict']
+            ], 409);
         }
 
         return response()->json([
@@ -89,18 +137,31 @@ class ShowtimeController extends Controller
         ]);
     }
 
+
     /**
      * Xóa suất chiếu
      */
     public function destroy(int $id)
     {
-        $this->service->deleteShowtime($id);
+        try {
+            $this->service->deleteShowtime($id);
+        } catch (\Exception $e) {
+
+            $err = $this->decodeException($e);
+
+            return response()->json([
+                'success'  => false,
+                'message'  => $err['message'],
+                'conflict' => $err['conflict']
+            ], 409);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Xóa suất chiếu thành công'
         ]);
     }
+
 
     /**
      * Lấy danh sách ngày chiếu theo phòng
@@ -116,6 +177,7 @@ class ShowtimeController extends Controller
         ]);
     }
 
+
     /**
      * Lấy các phòng có suất chiếu
      */
@@ -127,6 +189,7 @@ class ShowtimeController extends Controller
             'data'    => ['rooms' => $this->service->getRoomsWithShowtimes()]
         ]);
     }
+
 
     /**
      * Thống kê lịch chiếu
