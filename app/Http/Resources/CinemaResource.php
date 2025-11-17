@@ -26,8 +26,13 @@ class CinemaResource extends JsonResource
                 ]);
             }),
 
-            'created_at' => $this->formatDate($this->created_at),
-            'updated_at' => $this->formatDate($this->updated_at),
+            'created_at' => optional($this->created_at)
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->format('Y-m-d H:i:s'),
+
+            'updated_at' => optional($this->updated_at)
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->format('Y-m-d H:i:s'),
         ];
     }
 

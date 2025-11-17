@@ -64,6 +64,8 @@ class ShowtimesSeeder extends Seeder
                         'price'         => $faker->randomElement([65000, 75000, 85000, 90000, 100000, 120000]),
                         'format'        => $faker->randomElement($formats),
                         'language_type' => $faker->randomElement($languages),
+                        'created_at'    => now(),
+                        'updated_at'    => now(),
                     ];
                 }
             }

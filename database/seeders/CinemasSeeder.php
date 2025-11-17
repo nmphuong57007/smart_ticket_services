@@ -25,6 +25,6 @@ class CinemasSeeder extends Seeder
             ->count($count)
             ->create();
 
-        $this->command->info("✅ Đã tạo {$count} rạp phim thành công!");
+        $this->command->info("Đã tạo {$count} rạp phim thành công!");
     }
 }

@@ -38,8 +38,13 @@ class ShowtimeResource extends JsonResource
             'language_type' => $this->language_type,
             'price'         => (float) $this->price,
 
-            'created_at' => optional($this->created_at)->toDateTimeString(),
-            'updated_at' => optional($this->updated_at)->toDateTimeString(),
+            'created_at' => optional($this->created_at)
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->format('Y-m-d H:i:s'),
+
+            'updated_at' => optional($this->updated_at)
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->format('Y-m-d H:i:s'),
         ];
     }
 }
