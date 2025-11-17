@@ -31,7 +31,7 @@ class StoreShowtimeRequest extends FormRequest
                 'date_format:H:i',
                 function ($attr, $value, $fail) {
                     if ($value < "07:00" || $value > "23:59") {
-                        $fail("Giờ chiếu phải trong khoảng 07:00 đến 23:59.");
+                        $fail("Giờ chiếu phải trong khoảng 08:00 đến 23:59.");
                     }
                 }
             ],

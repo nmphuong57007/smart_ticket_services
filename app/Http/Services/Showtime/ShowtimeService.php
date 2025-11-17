@@ -132,7 +132,7 @@ class ShowtimeService
 
         return Showtime::create($data);
     }
-
+    
 
     /**
      * Cập nhật lịch chiếu
@@ -141,8 +141,19 @@ class ShowtimeService
     {
         $showtime = Showtime::findOrFail($id);
 
+        /**
+         * Luôn build lại data đầy đủ cho checkOverlapDetail
+         * Dù FE có gửi ít hay nhiều.
+         */
+        $checkData = [
+            'movie_id'  => $data['movie_id']  ?? $showtime->movie_id,
+            'room_id'   => $data['room_id']   ?? $showtime->room_id,
+            'show_date' => $data['show_date'] ?? $showtime->show_date,
+            'show_time' => $data['show_time'] ?? $showtime->show_time,
+        ];
+
         // Kiểm tra trùng (trừ chính nó)
-        $conflict = $this->checkOverlapDetail($data, $id);
+        $conflict = $this->checkOverlapDetail($checkData, $id);
 
         if ($conflict) {
             throw new \Exception(json_encode([
@@ -151,11 +162,14 @@ class ShowtimeService
             ]));
         }
 
-        // Auto update cinema_id
+        /**
+         * Nếu đổi room => đổi cinema_id tương ứng
+         */
         if (isset($data['room_id'])) {
             $data['cinema_id'] = Room::find($data['room_id'])->cinema_id ?? null;
         }
 
+        // Update tất cả trường FE gửi
         $showtime->update($data);
 
         return $showtime;
