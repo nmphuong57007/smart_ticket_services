@@ -51,19 +51,18 @@ class ShowtimeService
 
     public function checkOverlapDetail(array $data, $excludeId = null)
     {
-
         if ($this->isSeeding()) {
             return null;
         }
 
-        $buffer = 10;
+        $buffer = 10; // phút nghỉ giữa hai suất chiếu
 
         $movie = Movie::findOrFail($data['movie_id']);
         $duration = $movie->duration ?? 120;
 
         $newStart = Carbon::parse("{$data['show_date']} {$data['show_time']}");
-        $newEnd   = (clone $newStart)->addMinutes($duration + $buffer);
 
+        // Giờ mở cửa / đóng cửa
         $openTime  = Carbon::parse("{$data['show_date']} 08:00");
         $closeTime = Carbon::parse("{$data['show_date']} 24:00");
 
@@ -71,31 +70,32 @@ class ShowtimeService
             return ["error" => "Suất chiếu phải bắt đầu sau 08:00"];
         }
 
-        if ($newEnd->gt($closeTime)) {
-            return ["error" => "Suất chiếu phải kết thúc trước 24:00"];
-        }
-
+        // Lấy các suất chiếu khác trong ngày của phòng
         $existing = Showtime::with(['movie:id,title,duration'])
             ->where('room_id', $data['room_id'])
             ->where('show_date', $data['show_date'])
             ->when($excludeId, fn($q) => $q->where('id', '<>', $excludeId))
+            ->orderBy('show_time')
             ->get();
 
         foreach ($existing as $item) {
+
+            // Suất chiếu hiện tại
             $existingStart = Carbon::parse("{$item->show_date} {$item->show_time}");
-            $existingEnd   = (clone $existingStart)->addMinutes($item->movie->duration + $buffer);
+            $existingEnd   = (clone $existingStart)->addMinutes($item->movie->duration);
 
-            $isOverlap =
-                $existingStart->copy()->subMinutes($buffer)->lt($newEnd) &&
-                $existingEnd->copy()->addMinutes($buffer)->gt($newStart);
+            // Thời gian sớm nhất được phép bắt đầu suất mới
+            $requiredNextStart = (clone $existingEnd)->addMinutes($buffer);
 
-            if ($isOverlap) {
+            // Nếu newStart < required → trùng
+            if ($newStart->lt($requiredNextStart)) {
                 return [
                     "existing_showtime_id" => $item->id,
                     "room_id"              => $item->room_id,
                     "existing_movie"       => $item->movie->title,
                     "existing_start"       => $existingStart->format("Y-m-d H:i"),
                     "existing_end"         => $existingEnd->format("Y-m-d H:i"),
+                    "required_next_start"  => $requiredNextStart->format("Y-m-d H:i"),
                 ];
             }
         }
@@ -103,12 +103,27 @@ class ShowtimeService
         return null;
     }
 
+
     /**
      * CREATE SHOWTIME – ĐÃ THÊM FULL LOGIC RÀNG BUỘC PHIM
      */
     public function createShowtime(array $data)
     {
         $movie = Movie::findOrFail($data['movie_id']);
+
+        /**
+         * CẤM TẠO SUẤT CHIẾU TRONG QUÁ KHỨ
+         */
+        $today = Carbon::today()->format('Y-m-d');
+        $nowTime = Carbon::now()->format('H:i');
+
+        if ($data['show_date'] < $today) {
+            throw new \Exception("Không thể tạo suất chiếu trong quá khứ.");
+        }
+
+        if ($data['show_date'] === $today && $data['show_time'] < $nowTime) {
+            throw new \Exception("Giờ chiếu đã qua — không thể tạo suất chiếu.");
+        }
 
         /**
          * Không cho phép tạo suất chiếu cho phim STOPPED
@@ -125,9 +140,7 @@ class ShowtimeService
                 throw new \Exception("Phim chưa đến ngày khởi chiếu – không thể tạo suất chiếu.");
             }
 
-            /**
-             * ✔ COMING → SHOWING (auto chuyển)
-             */
+            // COMING → SHOWING
             $movie->update(['status' => 'showing']);
         }
 
