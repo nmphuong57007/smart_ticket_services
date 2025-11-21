@@ -16,6 +16,8 @@ class CinemaSeeder extends Seeder
                 'address' => 'Số 18 Nguyễn Trãi, Phường Thượng Đình, Quận Thanh Xuân, Hà Nội',
                 'phone' => '02466888899',
                 'status' => 'active',
+                'image' => 'cinema/rapchieuphim.jpg', // ảnh mặc định
+                'description' => 'Rạp chiếu phim Smart Ticket là rạp hiện đại với 8 phòng chiếu, âm thanh chuẩn Dolby Atmos và màn hình lớn chất lượng cao.',
             ]
         );
     }

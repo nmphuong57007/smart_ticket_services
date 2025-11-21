@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use App\Models\Room;
 use App\Models\Movie;
 use App\Models\Showtime;
+use App\Http\Services\Room\RoomService;
 use App\Http\Resources\ShowtimeResource;
 
 class ShowtimeService
@@ -110,60 +111,59 @@ class ShowtimeService
     public function createShowtime(array $data)
     {
         $movie = Movie::findOrFail($data['movie_id']);
+        $isSeeding = $this->isSeeding();
 
-        /**
-         * CẤM TẠO SUẤT CHIẾU TRONG QUÁ KHỨ
-         */
-        $today = Carbon::today()->format('Y-m-d');
-        $nowTime = Carbon::now()->format('H:i');
+        if (!$isSeeding) {
+            $today = Carbon::today()->format('Y-m-d');
+            $nowTime = Carbon::now()->format('H:i');
 
-        if ($data['show_date'] < $today) {
-            throw new \Exception("Không thể tạo suất chiếu trong quá khứ.");
+            if ($data['show_date'] < $today) {
+                throw new \Exception("Không thể tạo suất chiếu trong quá khứ.");
+            }
+
+            if ($data['show_date'] === $today && $data['show_time'] < $nowTime) {
+                throw new \Exception("Giờ chiếu đã qua — không thể tạo suất chiếu.");
+            }
         }
 
-        if ($data['show_date'] === $today && $data['show_time'] < $nowTime) {
-            throw new \Exception("Giờ chiếu đã qua — không thể tạo suất chiếu.");
-        }
-
-        /**
-         * Không cho phép tạo suất chiếu cho phim STOPPED
-         */
-        if ($movie->status === 'stopped') {
+        if (!$isSeeding && $movie->status === 'stopped') {
             throw new \Exception("Phim đã ngừng chiếu – không thể tạo suất chiếu.");
         }
 
-        /**
-         * COMING nhưng đặt ngày < release_date
-         */
-        if ($movie->status === 'coming') {
+        if (!$isSeeding && $movie->status === 'coming') {
             if ($movie->release_date && $data['show_date'] < $movie->release_date) {
                 throw new \Exception("Phim chưa đến ngày khởi chiếu – không thể tạo suất chiếu.");
             }
+        }
 
-            // COMING → SHOWING
+        if ($movie->status === 'coming') {
             $movie->update(['status' => 'showing']);
         }
 
-        // Check trùng suất chiếu
-        $conflict = $this->checkOverlapDetail($data);
-        if ($conflict) {
-            throw new \Exception(json_encode([
-                "message"  => "Lịch chiếu trùng thời gian trong phòng này!",
-                "conflict" => $conflict
-            ]));
+        if (!$isSeeding) {
+            $conflict = $this->checkOverlapDetail($data);
+            if ($conflict) {
+                throw new \Exception(json_encode([
+                    "message"  => "Lịch chiếu trùng thời gian trong phòng này!",
+                    "conflict" => $conflict
+                ]));
+            }
         }
 
-        // Tính giá weekday/weekend
+        // Tính giá theo weekday/weekend
         $data['price'] = $this->calculatePrice($data['show_date']);
 
+        // Tạo suất chiếu
         $showtime = Showtime::create($data);
 
-        // Auto tạo ghế
-        app(\App\Http\Services\Room\RoomService::class)
-            ->createSeatsForShowtime($showtime);
+        if (!$isSeeding) {
+            app(RoomService::class)
+                ->createSeatsForShowtime($showtime);
+        }
 
         return $showtime;
     }
+
 
     public function updateShowtime(int $id, array $data)
     {

@@ -14,6 +14,8 @@ class Cinema extends Model
         'address',
         'phone',
         'status',
+        'image',
+        'description',
     ];
 
     /**

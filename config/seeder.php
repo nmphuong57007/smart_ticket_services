@@ -4,7 +4,7 @@ return [
     // Số lượng mặc định cho các loại dữ liệu khi seed
     'cinemas' => env('SEED_CINEMAS', 30),
     'rooms_per_cinema' => env('SEED_ROOMS_PER_CINEMA', 5),
-    'movies' => env('SEED_MOVIES', 100),
+    'movies' => env('SEED_MOVIES', 20),
     'showtime_days' => env('SEED_SHOWTIME_DAYS', 7),
     'customers' => env('SEED_CUSTOMERS', 1000),
     'contents' => env('SEED_CONTENTS', 20),

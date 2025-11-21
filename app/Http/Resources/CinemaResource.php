@@ -14,6 +14,8 @@ class CinemaResource extends JsonResource
             'address' => $this->address,
             'phone'   => $this->phone,
             'status'  => $this->status,
+            'image' => $this->image ? asset('storage/' . $this->image) : null,
+            'description' => $this->description,
 
             // Luôn load rooms nếu controller gọi with('rooms')
             'rooms' => $this->whenLoaded('rooms', function () {
