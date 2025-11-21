@@ -2,16 +2,15 @@
 
 namespace App\Http\Services\Showtime;
 
-use App\Models\Room;
-use App\Models\Showtime;
-use App\Models\Movie;
 use Carbon\Carbon;
+use App\Models\Room;
+use App\Models\Movie;
+use App\Models\Showtime;
+use App\Http\Resources\ShowtimeResource;
 
 class ShowtimeService
 {
-    /**
-     * Kiểm tra đang chạy DB Seeder hay không
-     */
+
     private function isSeeding(): bool
     {
         if (!app()->runningInConsole()) return false;
@@ -22,9 +21,7 @@ class ShowtimeService
         return in_array($argv[1], ['db:seed', 'migrate:fresh', 'migrate:fresh --seed']);
     }
 
-    /**
-     * Lấy danh sách lịch chiếu
-     */
+
     public function getShowtimes(array $filters = [])
     {
         return Showtime::with([
@@ -41,9 +38,7 @@ class ShowtimeService
             ->paginate($filters['per_page'] ?? 10);
     }
 
-    /**
-     * TÍNH GIÁ THEO NGÀY
-     */
+
     private function calculatePrice(string $date): int
     {
         $dayOfWeek = Carbon::parse($date)->dayOfWeek;
@@ -53,12 +48,10 @@ class ShowtimeService
         return in_array($dayOfWeek, [6, 0]) ? $weekendPrice : $weekdayPrice;
     }
 
-    /**
-     * Kiểm tra trùng suất chiếu – bỏ qua nếu seeding
-     */
+
     public function checkOverlapDetail(array $data, $excludeId = null)
     {
-        // 💥 Nếu đang seed → bỏ qua kiểm tra trùng giờ
+
         if ($this->isSeeding()) {
             return null;
         }
@@ -111,11 +104,34 @@ class ShowtimeService
     }
 
     /**
-     * Tạo lịch chiếu mới + auto tạo ghế
+     * CREATE SHOWTIME – ĐÃ THÊM FULL LOGIC RÀNG BUỘC PHIM
      */
     public function createShowtime(array $data)
     {
-        // checkOverlapDetail() sẽ tự bỏ qua nếu đang seed
+        $movie = Movie::findOrFail($data['movie_id']);
+
+        /**
+         * Không cho phép tạo suất chiếu cho phim STOPPED
+         */
+        if ($movie->status === 'stopped') {
+            throw new \Exception("Phim đã ngừng chiếu – không thể tạo suất chiếu.");
+        }
+
+        /**
+         * COMING nhưng đặt ngày < release_date
+         */
+        if ($movie->status === 'coming') {
+            if ($movie->release_date && $data['show_date'] < $movie->release_date) {
+                throw new \Exception("Phim chưa đến ngày khởi chiếu – không thể tạo suất chiếu.");
+            }
+
+            /**
+             * ✔ COMING → SHOWING (auto chuyển)
+             */
+            $movie->update(['status' => 'showing']);
+        }
+
+        // Check trùng suất chiếu
         $conflict = $this->checkOverlapDetail($data);
         if ($conflict) {
             throw new \Exception(json_encode([
@@ -129,7 +145,7 @@ class ShowtimeService
 
         $showtime = Showtime::create($data);
 
-        // Tạo ghế theo suất chiếu
+        // Auto tạo ghế
         app(\App\Http\Services\Room\RoomService::class)
             ->createSeatsForShowtime($showtime);
 
@@ -198,6 +214,32 @@ class ShowtimeService
             'total_showtimes' => Showtime::count(),
             'total_movies'    => Showtime::distinct('movie_id')->count('movie_id'),
             'total_rooms'     => Showtime::distinct('room_id')->count('room_id'),
+        ];
+    }
+
+    public function getShowtimeById(int $id): ?Showtime
+    {
+        return Showtime::with(['room', 'seats'])->find($id);
+    }
+
+    public function getSeatsByShowtime(int $showtimeId)
+    {
+        return Showtime::with(['seats'])->findOrFail($showtimeId)->seats;
+    }
+
+    public function getStatisticsByDate(string $date): array
+    {
+        $showtimes = Showtime::with(['movie:id,title,duration,poster', 'room:id,name'])
+            ->where('show_date', $date)
+            ->orderBy('show_time')
+            ->get();
+
+        return [
+            'date'               => $date,
+            'total_showtimes'    => $showtimes->count(),
+            'total_movies'       => $showtimes->pluck('movie_id')->unique()->count(),
+            'total_rooms'        => $showtimes->pluck('room_id')->unique()->count(),
+            'showtimes'          => ShowtimeResource::collection($showtimes),
         ];
     }
 }

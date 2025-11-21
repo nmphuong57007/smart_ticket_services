@@ -13,7 +13,7 @@ class RoomResource extends JsonResource
             'name'         => $this->name,
 
             // seat_map: array đã được cast trong Model
-            'seat_map'     => $this->seat_map ?? [],
+            'seat_map' => $this->formatSeatMap($this->seat_map ?? []),
 
             // Tổng số ghế
             'total_seats'  => $this->total_seats,
@@ -59,8 +59,8 @@ class RoomResource extends JsonResource
             foreach ($row as $seat) {
 
                 // GHẾ DẠNG STRING → LUÔN LÀ GHẾ THƯỜNG
-                if (is_string($seat) && $type === 'normal') {
-                    $count++;
+                if (is_string($seat)) {
+                    if ($type === 'normal') $count++;
                 }
 
                 // GHẾ DẠNG OBJECT
@@ -74,5 +74,42 @@ class RoomResource extends JsonResource
         }
 
         return $count;
+    }
+    /**
+     * Chuẩn hóa seat_map để luôn
+     */
+    private function formatSeatMap(array $seatMap): array
+    {
+        $result = [];
+
+        foreach ($seatMap as $row) {
+            $rowData = [];
+
+            foreach ($row as $seat) {
+
+                // CASE 1: seat dạng string → convert sang object
+                if (is_string($seat)) {
+                    $rowData[] = [
+                        'code'   => $seat,
+                        'type'   => 'normal',
+                        'status' => 'active',
+                    ];
+                    continue;
+                }
+
+                // CASE 2: seat dạng object
+                if (is_array($seat)) {
+                    $rowData[] = [
+                        'code'   => $seat['code'] ?? '',
+                        'type'   => $seat['type'] ?? 'normal',
+                        'status' => $seat['status'] ?? 'active',
+                    ];
+                }
+            }
+
+            $result[] = $rowData;
+        }
+
+        return $result;
     }
 }

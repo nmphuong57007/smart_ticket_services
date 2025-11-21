@@ -21,6 +21,8 @@ class SeatResource extends JsonResource
             // Trạng thái ghế
             'status'      => $this->status,
 
+            'label'       => $this->getStatusLabel(),
+
             // Giá ghế theo suất chiếu
             'price'       => (float) $this->price,
 
@@ -32,5 +34,16 @@ class SeatResource extends JsonResource
                 ->timezone('Asia/Ho_Chi_Minh')
                 ->format('Y-m-d H:i:s'),
         ];
+    }
+
+    private function getStatusLabel(): string
+    {
+        return match ($this->status) {
+            'available'   => 'Còn trống',
+            'booked'      => 'Đã đặt',
+            'selected'    => 'Đang chọn',
+            'unavailable' => 'Không sử dụng', 
+            default       => 'Không xác định',
+        };
     }
 }

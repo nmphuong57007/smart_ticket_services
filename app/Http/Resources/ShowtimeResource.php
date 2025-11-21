@@ -12,7 +12,7 @@ class ShowtimeResource extends JsonResource
         $start = Carbon::parse("{$this->show_date} {$this->show_time}");
         $duration = $this->movie->duration ?? 0;
 
-        // Tính thời gian kết thúc phim (không buffer)
+        
         $end = $start->copy()->addMinutes($duration);
 
         return [
@@ -20,7 +20,7 @@ class ShowtimeResource extends JsonResource
             'movie_id'  => $this->movie_id,
             'room_id'   => $this->room_id,
 
-            // Movie info
+
             'movie' => [
                 'id'           => $this->movie->id ?? null,
                 'title'        => $this->movie->title ?? null,
@@ -29,13 +29,13 @@ class ShowtimeResource extends JsonResource
                 'release_date' => $this->movie->release_date ?? null,
             ],
 
-            // Room info
+
             'room' => [
                 'id'   => $this->room->id ?? null,
                 'name' => $this->room->name ?? null,
             ],
 
-            // Showtime info
+
             'show_date' => $this->show_date,
             'show_time' => $start->format('H:i'),
             'end_time'  => $end->format('H:i'),
@@ -44,14 +44,27 @@ class ShowtimeResource extends JsonResource
             'language_type' => $this->language_type,
             'price'         => (float) $this->price,
 
-            // Logs
-            'created_at' => optional($this->created_at)
-                ->timezone('Asia/Ho_Chi_Minh')
-                ->format('Y-m-d H:i:s'),
+            'created_at' => optional($this->created_at)->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s'),
+            'updated_at' => optional($this->updated_at)->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s'),
 
-            'updated_at' => optional($this->updated_at)
-                ->timezone('Asia/Ho_Chi_Minh')
-                ->format('Y-m-d H:i:s'),
+            // THÊM PHẦN QUAN TRỌNG NÀY
+            'seats' => $this->whenLoaded('seats', function () {
+                return $this->seats->map(function ($seat) {
+                    return [
+                        'id'            => $seat->id,
+                        'seat_code'     => $seat->seat_code,
+                        'type'          => $seat->type,
+                        'status'        => $seat->status,
+                        'status_label'  => match ($seat->status) {
+                            'available' => 'Còn trống',
+                            'selected'  => 'Đang chọn',
+                            'booked'    => 'Đã đặt',
+                            default     => 'Không xác định',
+                        },
+                        'price'         => (float) $seat->price,
+                    ];
+                });
+            }),
         ];
     }
 }

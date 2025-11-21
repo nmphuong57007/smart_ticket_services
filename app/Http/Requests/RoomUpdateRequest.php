@@ -25,6 +25,8 @@ class RoomUpdateRequest extends FormRequest
             'seat_map.*.*.code'  => 'sometimes|string|max:10',
             'seat_map.*.*.type'  => 'sometimes|string|max:20',
             'seat_map.*.*.price' => 'sometimes|numeric|min:0|max:1000000',
+            'seat_map.*.*.status' => 'sometimes|string|in:active,broken,blocked',
+
 
             // Trạng thái
             'status' => 'sometimes|in:active,maintenance,closed',

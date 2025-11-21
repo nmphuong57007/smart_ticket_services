@@ -103,7 +103,11 @@ class RoomService
     }
 
     /**
-     * Tạo seats theo suất chiếu — hỗ trợ string & object
+     * Tạo seats theo suất chiếu
+     * Xử lý trạng thái ghế vật lý:
+     * active  → available
+     * broken  → unavailable
+     * blocked → unavailable
      */
     public function createSeatsForShowtime($showtime, ?float $basePrice = null): void
     {
@@ -120,12 +124,19 @@ class RoomService
                     // Nếu chỉ là string "A1" → convert sang object
                     if (is_string($seat)) {
                         $seat = [
-                            'code' => $seat,
-                            'type' => 'normal',
+                            'code'   => $seat,
+                            'type'   => 'normal',
+                            'status' => 'active', // mặc định
                         ];
                     }
 
                     $type = $seat['type'] ?? 'normal';
+                    $physicalStatus = $seat['status'] ?? 'active';
+
+                    // Xác định trạng thái ghế trong suất chiếu
+                    $seatStatus = ($physicalStatus === 'active')
+                        ? 'available'
+                        : 'unavailable';
 
                     // Lấy hệ số multiplier
                     $multiplier = config("pricing.seat_multiplier.$type", 1.0);
@@ -136,14 +147,14 @@ class RoomService
                     // Tính giá ghế = base × multiplier
                     $finalPrice = $base * $multiplier;
 
-                    // Làm tròn về số chẵn nghìn (VD: 81250 → 81000)
+                    // Làm tròn về số chẵn nghìn
                     $finalPrice = round($finalPrice / 1000) * 1000;
 
                     Seat::create([
                         'showtime_id' => $showtime->id,
                         'seat_code'   => $seat['code'],
                         'type'        => $type,
-                        'status'      => 'available',
+                        'status'      => $seatStatus,   // GHẾ SUẤT CHIẾU
                         'price'       => $finalPrice,
                     ]);
                 }

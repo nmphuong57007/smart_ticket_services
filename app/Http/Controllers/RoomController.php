@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SeatStatusUpdateRequest;
 use App\Http\Requests\RoomStoreRequest;
 use App\Http\Requests\RoomUpdateRequest;
 use App\Http\Resources\RoomResource;
@@ -120,7 +121,7 @@ class RoomController extends Controller
             }
         }
 
-        // Tiến hành update
+
         try {
             $updated = $this->service->updateRoom($room, $request->validated());
         } catch (\Exception $e) {
@@ -183,7 +184,7 @@ class RoomController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        // Không thể đóng phòng nếu có suất tương lai
+
         if ($validated['status'] === 'closed') {
             $hasFuture = Showtime::where('room_id', $id)
                 ->where('show_date', '>=', now()->format('Y-m-d'))
@@ -216,6 +217,88 @@ class RoomController extends Controller
         return response()->json([
             'success' => true,
             'data'    => $this->service->getStatistics(),
+        ]);
+    }
+
+    /**
+     * Cập nhật trạng thái ghế vật lý + đồng bộ suất chiếu tương lai
+     */
+    public function updateSeatStatus(SeatStatusUpdateRequest $request, int $roomId, string $seatCode)
+    {
+        $room = $this->service->getRoomById($roomId);
+
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy phòng chiếu',
+            ], 404);
+        }
+
+        $seatMap = $room->seat_map ?? [];
+        $updated = false;
+
+        foreach ($seatMap as &$row) {
+            foreach ($row as &$seat) {
+
+                if (is_string($seat)) {
+                    if ($seat === $seatCode) {
+                        $seat = [
+                            'code' => $seat,
+                            'type' => 'normal',
+                            'status' => $request->status,
+                        ];
+                        $updated = true;
+                        break;
+                    }
+                }
+
+                if (is_array($seat)) {
+                    if (($seat['code'] ?? null) === $seatCode) {
+                        $seat['status'] = $request->status;
+                        $updated = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($updated) break;
+        }
+
+        if (!$updated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy ghế trong sơ đồ phòng.',
+            ], 404);
+        }
+
+        // Lưu seat_map
+        $room->seat_map = $seatMap;
+        $room->save();
+
+        /**
+         * Đồng bộ ghế suất chiếu tương lai
+         * active  → available
+         * broken  → unavailable
+         * blocked → unavailable
+         */
+        $newSeatStatus = $request->status === 'active'
+            ? 'available'
+            : 'unavailable';
+
+        Showtime::where('room_id', $roomId)
+            ->where('show_date', '>=', today())
+            ->each(function ($showtime) use ($seatCode, $newSeatStatus) {
+                $seat = $showtime->seats()->where('seat_code', $seatCode)->first();
+                if ($seat) {
+                    $seat->status = $newSeatStatus;
+                    $seat->save();
+                }
+            });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật trạng thái ghế thành công.',
+            'data' => new RoomResource($room),
         ]);
     }
 }

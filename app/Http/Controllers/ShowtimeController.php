@@ -50,24 +50,27 @@ class ShowtimeController extends Controller
         $showtimes = $this->service->getShowtimes($filters);
 
         return response()->json([
-            'items' => ShowtimeResource::collection($showtimes),
-            'pagination' => [
-                'page'      => $showtimes->currentPage(),
-                'per_page'  => $showtimes->perPage(),
-                'total'     => $showtimes->total(),
-                'last_page' => $showtimes->lastPage(),
+            'success' => true,
+            'message' => 'Lấy danh sách lịch chiếu thành công',
+            'data' => [
+                'items' => ShowtimeResource::collection($showtimes),
+                'pagination' => [
+                    'page'      => $showtimes->currentPage(),
+                    'per_page'  => $showtimes->perPage(),
+                    'total'     => $showtimes->total(),
+                    'last_page' => $showtimes->lastPage(),
+                ]
             ]
         ]);
     }
 
     /**
-     * Tự động decode message JSON khi service throw exception
+     * Decode error service throw
      */
     private function decodeException(\Exception $e)
     {
         $msg = json_decode($e->getMessage(), true);
 
-        // Trường hợp message KHÔNG phải JSON → trả về mặc định
         if (!is_array($msg)) {
             return [
                 'message'  => $e->getMessage(),
@@ -75,13 +78,11 @@ class ShowtimeController extends Controller
             ];
         }
 
-        // Trường hợp là JSON hợp lệ (message + conflict)
         return [
-            'message'  => $msg['message'] ?? 'Có lỗi xảy ra',
+            'message'  => $msg['message'] ?? $e->getMessage(),
             'conflict' => $msg['conflict'] ?? null
         ];
     }
-
 
     /**
      * Tạo suất chiếu
@@ -108,7 +109,6 @@ class ShowtimeController extends Controller
         ], 201);
     }
 
-
     /**
      * Cập nhật suất chiếu
      */
@@ -134,7 +134,6 @@ class ShowtimeController extends Controller
         ]);
     }
 
-
     /**
      * Xóa suất chiếu
      */
@@ -159,7 +158,6 @@ class ShowtimeController extends Controller
         ]);
     }
 
-
     /**
      * Lấy danh sách ngày chiếu theo phòng
      */
@@ -174,6 +172,78 @@ class ShowtimeController extends Controller
         ]);
     }
 
+    /**
+     * Lấy sơ đồ ghế của suất chiếu (public)
+     */
+    public function seats(int $id)
+    {
+        $showtime = $this->service->getShowtimeById($id);
+
+        if (!$showtime) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy suất chiếu'
+            ], 404);
+        }
+
+        $room = $showtime->room;
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Suất chiếu không thuộc phòng nào'
+            ], 404);
+        }
+
+        $seatMap = $room->seat_map ?? [];
+        $seats   = $showtime->seats()->get()->keyBy('seat_code');
+
+        $result = [];
+
+        foreach ($seatMap as $row) {
+            $rowData = [];
+
+            foreach ($row as $seat) {
+
+                if (is_string($seat)) {
+                    $code = $seat;
+                    $physical = [
+                        'code'   => $code,
+                        'type'   => 'normal',
+                        'status' => 'active'
+                    ];
+                } else {
+                    $code = $seat['code'];
+                    $physical = [
+                        'code'   => $seat['code'],
+                        'type'   => $seat['type'] ?? 'normal',
+                        'status' => $seat['status'] ?? 'active'
+                    ];
+                }
+
+                $seatShowtime = $seats[$code] ?? null;
+
+                $rowData[] = [
+                    'code'            => $code,
+                    'type'            => $physical['type'],
+                    'physical_status' => $physical['status'],
+                    'status'          => $seatShowtime->status ?? 'available',
+                    'price'           => $seatShowtime->price ?? $showtime->price,
+                ];
+            }
+
+            $result[] = $rowData;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy sơ đồ ghế thành công',
+            'data'    => [
+                'showtime_id' => $showtime->id,
+                'room_id'     => $room->id,
+                'seat_map'    => $result
+            ]
+        ]);
+    }
 
     /**
      * Lấy các phòng có suất chiếu
@@ -187,9 +257,8 @@ class ShowtimeController extends Controller
         ]);
     }
 
-
     /**
-     * Thống kê lịch chiếu
+     * Thống kê lịch chiếu tổng
      */
     public function statistics()
     {
@@ -197,6 +266,26 @@ class ShowtimeController extends Controller
             'success' => true,
             'message' => 'Lấy thống kê thành công',
             'data'    => $this->service->getShowtimeStatistics()
+        ]);
+    }
+
+    /**
+     * Thống kê lịch chiếu theo ngày
+     */
+    public function statisticsByDate(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date'
+        ]);
+
+        $date = $request->query('date');
+
+        $stats = $this->service->getStatisticsByDate($date);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy thống kê lịch chiếu theo ngày thành công',
+            'data'    => $stats
         ]);
     }
 }
