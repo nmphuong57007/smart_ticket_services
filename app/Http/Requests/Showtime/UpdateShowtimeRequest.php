@@ -2,29 +2,33 @@
 
 namespace App\Http\Requests\Showtime;
 
-
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateShowtimeRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        // Chỉ admin mới được cập nhật lịch chiếu
+        return $this->user() && $this->user()->role === 'admin';
     }
 
     public function rules(): array
     {
-
-
         return [
 
-            // Movie & room: chỉ validate khi FE gửi lên
+            // FE chỉ gửi nếu đổi phim hoặc đổi phòng
             'movie_id'  => 'sometimes|integer|exists:movies,id',
             'room_id'   => 'sometimes|integer|exists:rooms,id',
 
-            'cinema_id' => 'sometimes|nullable|integer|exists:cinemas,id',
+            // BỎ cinema_id — 1 rạp duy nhất trong hệ thống
+            // 'cinema_id' => 'sometimes|nullable|integer|exists:cinemas,id',
 
-            'show_date' => 'sometimes|date_format:Y-m-d|after_or_equal:today',
+            'show_date' => [
+                'sometimes',
+                'date_format:Y-m-d',
+                // Nếu FE đổi ngày → không cho đổi về quá khứ
+                'after_or_equal:today',
+            ],
 
             'show_time' => [
                 'sometimes',

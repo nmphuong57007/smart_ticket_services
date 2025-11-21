@@ -22,7 +22,6 @@ class ShowtimeController extends Controller
         $this->validator = $validator;
     }
 
-
     /**
      * Danh sách lịch chiếu (lọc + phân trang)
      */
@@ -38,7 +37,6 @@ class ShowtimeController extends Controller
         }
 
         $filters = $request->only([
-            'cinema_id',
             'room_id',
             'movie_id',
             'show_date',
@@ -52,7 +50,7 @@ class ShowtimeController extends Controller
         $showtimes = $this->service->getShowtimes($filters);
 
         return response()->json([
-            'items' => ShowtimeResource::collection($showtimes->items()),
+            'items' => ShowtimeResource::collection($showtimes),
             'pagination' => [
                 'page'      => $showtimes->currentPage(),
                 'per_page'  => $showtimes->perPage(),
@@ -61,7 +59,6 @@ class ShowtimeController extends Controller
             ]
         ]);
     }
-
 
     /**
      * Tự động decode message JSON khi service throw exception

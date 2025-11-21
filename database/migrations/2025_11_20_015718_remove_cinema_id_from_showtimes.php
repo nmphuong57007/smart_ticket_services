@@ -6,22 +6,21 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up(): void
+   // Xóa cột cinema_id khỏi bảng showtimes
+    public function up()
     {
         Schema::table('showtimes', function (Blueprint $table) {
-            $table->unsignedBigInteger('cinema_id')
-                ->nullable()
-                ->after('room_id');
-
-            $table->index('cinema_id');
+            if (Schema::hasColumn('showtimes', 'cinema_id')) {
+                $table->dropColumn('cinema_id');
+            }
         });
     }
 
-    public function down(): void
+    public function down()
     {
         Schema::table('showtimes', function (Blueprint $table) {
-            $table->dropIndex(['cinema_id']);
-            $table->dropColumn('cinema_id');
+            $table->unsignedBigInteger('cinema_id')->nullable();
+            $table->index('cinema_id');
         });
     }
 };

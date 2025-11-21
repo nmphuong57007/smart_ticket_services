@@ -9,7 +9,9 @@ class ShowtimeFilterValidator extends BaseValidator
     public function rules(): array
     {
         return [
-            'cinema_id'   => 'sometimes|nullable|integer|exists:cinemas,id',
+
+            // Không còn cinema_id nữa!
+
             'room_id'     => 'sometimes|nullable|integer|exists:rooms,id',
             'movie_id'    => 'sometimes|nullable|integer|exists:movies,id',
 
@@ -20,7 +22,7 @@ class ShowtimeFilterValidator extends BaseValidator
 
             'per_page'    => 'sometimes|nullable|integer|min:1|max:100',
 
-            // Thứ tự sắp xếp: chỉ cho phép FE dùng đúng các trường cần thiết
+            // Sắp xếp
             'sort_by'     => 'sometimes|nullable|in:id,show_date,show_time,created_at,updated_at,price,room_id,movie_id',
             'sort_order'  => 'sometimes|nullable|in:asc,desc',
         ];
@@ -29,8 +31,6 @@ class ShowtimeFilterValidator extends BaseValidator
     public function messages(): array
     {
         return [
-            'cinema_id.integer' => 'ID rạp phải là số nguyên',
-            'cinema_id.exists'  => 'Rạp không tồn tại',
 
             'room_id.integer'   => 'ID phòng phải là số nguyên',
             'room_id.exists'    => 'Phòng không tồn tại',

@@ -8,30 +8,39 @@ class RoomUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Chỉ admin hoặc staff mới có quyền cập nhật phòng
-        return $this->user() && in_array($this->user()->role, ['admin']);
+        return $this->user() && $this->user()->role === 'admin';
     }
 
     public function rules(): array
     {
         return [
-            'cinema_id'   => 'sometimes|exists:cinemas,id',
-            'name'        => 'sometimes|string|max:50',
-            'seat_map'    => 'sometimes|nullable|array',
-            'seat_map.*'  => 'array',
-            'total_seats' => 'sometimes|integer|min:0',
-            'status'      => 'sometimes|in:active,maintenance,closed',
+            // Cho phép sửa name nhưng không trùng phòng khác
+            'name' => 'sometimes|string|max:50|unique:rooms,name,' . $this->route('id'),
+
+            // Chỉ validate seat_map nếu UI gửi lên
+            'seat_map'   => 'sometimes|array',
+            'seat_map.*' => 'array',
+
+            // Ghế dạng string hoặc object
+            'seat_map.*.*.code'  => 'sometimes|string|max:10',
+            'seat_map.*.*.type'  => 'sometimes|string|max:20',
+            'seat_map.*.*.price' => 'sometimes|numeric|min:0|max:1000000',
+
+            // Trạng thái
+            'status' => 'sometimes|in:active,maintenance,closed',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'cinema_id.exists'   => 'Rạp chiếu được chọn không tồn tại.',
-            'name.string'        => 'Tên phòng chiếu phải là chuỗi ký tự.',
-            'seat_map.array'     => 'Sơ đồ ghế phải ở dạng mảng hợp lệ.',
-            'total_seats.integer' => 'Tổng số ghế phải là số nguyên.',
-            'status.in'          => 'Trạng thái phòng không hợp lệ.',
+            'name.unique' => 'Tên phòng chiếu đã tồn tại.',
+            'name.max'    => 'Tên phòng chiếu không vượt quá 50 ký tự.',
+
+            'seat_map.array'      => 'Sơ đồ ghế phải là dạng mảng.',
+            'seat_map.*.array'    => 'Mỗi hàng ghế phải là dạng mảng.',
+
+            'status.in' => 'Trạng thái phòng không hợp lệ.',
         ];
     }
 }
