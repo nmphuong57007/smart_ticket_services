@@ -18,16 +18,15 @@ class DatabaseSeeder extends Seeder
         // Gọi các seeder theo thứ tự logic (quan hệ phụ thuộc)
         $this->call([
             AdminUserSeeder::class,
-            CinemasSeeder::class,
-            RoomsSeeder::class,
+            CinemaSeeder::class,
+            RoomsFixedSeeder::class,
             GenresSeeder::class,
             MoviesSeeder::class,
             ShowtimesSeeder::class,
-            SeatSeeder::class,
             UsersSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
-            ContentsSeeder::class,       
+            ContentsSeeder::class,
         ]);
 
         // Bật lại kiểm tra khóa ngoại

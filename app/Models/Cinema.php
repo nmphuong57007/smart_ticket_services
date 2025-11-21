@@ -9,14 +9,35 @@ class Cinema extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'address', 'phone', 'status']; // + status
+    protected $fillable = [
+        'name',
+        'address',
+        'phone',
+        'status',
+        'image',
+        'description',
+    ];
 
-    // (tuỳ chọn) scope lọc active
-    public function scopeActive($q)
+    /**
+     * MỘT RẠP DUY NHẤT – Luôn truy vấn ID = 1
+     * Giúp các chỗ khác không cần load nhiều rạp
+     */
+    public static function default()
     {
-        return $q->where('status', 'active');
+        return self::find(1);
     }
 
+    /**
+     * Scope lọc rạp đang hoạt động
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Rạp có nhiều phòng chiếu
+     */
     public function rooms()
     {
         return $this->hasMany(Room::class);

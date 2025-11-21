@@ -87,6 +87,55 @@ class MovieController extends Controller
         }
     }
 
+    // Lấy lịch chiếu theo phim
+    public function showtimesByMovie($movieId)
+    {
+        // Kiểm tra phim
+        try {
+            $movie = $this->movieService->getMovieById($movieId);
+        } catch (\Exception $e) {
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy phim'
+            ], 404);
+        }
+
+        // Lấy danh sách suất chiếu theo phim
+        $showtimes = Showtime::where('movie_id', $movieId)
+            ->with(['room:id,name'])
+            ->orderBy('show_date')
+            ->orderBy('show_time')
+            ->get()
+            ->groupBy('show_date')
+            ->map(function ($items, $date) {
+                return [
+                    'date' => $date,
+                    'showtimes' => $items->map(function ($st) {
+                        return [
+                            'id' => $st->id,
+                            'show_time' => substr($st->show_time, 0, 5), // HH:MM
+                            'room' => [
+                                'id' => $st->room->id,
+                                'name' => $st->room->name,
+                            ],
+                            'price' => $st->price,
+                            'format' => $st->format,
+                            'language_type' => $st->language_type,
+                        ];
+                    })->values(),
+                ];
+            })
+            ->values();
+
+        return response([
+            'success' => true,
+            'message' => 'Lấy lịch chiếu theo phim thành công',
+            'data' => $showtimes
+        ]);
+    }
+
+
+
 
     // Thêm phim mới
     public function store(MovieStoreRequest $request)
@@ -201,28 +250,46 @@ class MovieController extends Controller
 
 
     // Cập nhật trạng thái phim
+    // Cập nhật trạng thái phim
     public function changeStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:coming,showing,stopped']);
+        $request->validate([
+            'status' => 'required|in:coming,showing,stopped'
+        ]);
 
         try {
             $movie = $this->movieService->getMovieById($id);
         } catch (\Exception $e) {
-            return response(['success' => false, 'message' => 'Không tìm thấy phim'], 404);
+            return response([
+                'success' => false,
+                'message' => 'Không tìm thấy phim'
+            ], 404);
         }
 
+        $newStatus = $request->input('status');
+
+        // GỌI LOGIC CHECK TỪ MovieService
+        $error = $this->movieService->validateStatusChange($movie, $newStatus);
+        if ($error) {
+            return response([
+                'success' => false,
+                'message' => $error
+            ], 409); // 409 Conflict
+        }
+
+        // HỢP LỆ → cập nhật
         $updated = $this->movieService->updateMovie($movie, [
-            'status' => $request->input('status')
+            'status' => $newStatus
         ]);
 
         return response([
             'success' => true,
-            'message' => 'Cập nhật trạng thái thành công',
+            'message' => 'Cập nhật trạng thái phim thành công',
             'data' => new MovieResource($updated)
         ]);
     }
 
-
+    
     // Thống kê phim
     public function statistics()
     {

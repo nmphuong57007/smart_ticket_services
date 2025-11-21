@@ -10,107 +10,57 @@ use Illuminate\Support\Facades\DB;
 class CinemaService
 {
     /**
-     *  Lấy danh sách rạp (phân trang + lọc + sắp xếp)
+     * Lấy thông tin rạp duy nhất (ID = 1)
      */
-    public function getCinemas(array $filters)
+    public function getCinema()
     {
-        return Cinema::withCount('rooms')
-            // Lọc theo tên hoặc địa chỉ
-            ->when($filters['name'] ?? null, function ($q, $name) {
-                $q->where(function ($query) use ($name) {
-                    $query->where('name', 'like', "%{$name}%")
-                        ->orWhere('address', 'like', "%{$name}%");
-                });
-            })
-            // Lọc theo trạng thái
-            ->when(
-                $filters['status'] ?? null,
-                fn($q, $status) =>
-                $q->where('status', $status)
-            )
-            // Sắp xếp linh hoạt
-            ->orderBy($filters['sort_by'] ?? 'id', $filters['sort_order'] ?? 'asc')
-            ->paginate($filters['per_page'] ?? 10);
+        return Cinema::with('rooms')->find(1);
     }
 
     /**
-     *  Lấy chi tiết 1 rạp (kèm danh sách phòng)
+     * Lấy danh sách phòng của rạp duy nhất
      */
-    public function getCinemaById(int $id)
+    public function getRooms()
     {
-        return Cinema::with('rooms:id,cinema_id,name,status')->find($id);
+        return Room::where('cinema_id', 1)
+            ->orderBy('name')
+            ->get();
     }
 
     /**
-     *  Thêm mới rạp chiếu
+     * Lấy lịch chiếu của rạp duy nhất
+     * (lấy showtimes của tất cả rooms thuộc cinema_id = 1)
      */
-    public function createCinema(array $data): Cinema
+    public function getShowtimes($date = null)
     {
-        return DB::transaction(fn() => Cinema::create($data));
-    }
+        // Lấy danh sách rooms thuộc rạp duy nhất
+        $roomIds = Room::where('cinema_id', 1)->pluck('id');
 
-    /**
-     *  Cập nhật thông tin rạp chiếu
-     */
-    public function updateCinema(Cinema $cinema, array $data): Cinema
-    {
-        return DB::transaction(function () use ($cinema, $data) {
-            $cinema->update($data);
-            return $cinema->fresh('rooms');
-        });
-    }
-
-    /**
-     *  Xóa rạp chiếu
-     */
-    public function deleteCinema(Cinema $cinema): bool
-    {
-        return DB::transaction(fn() => $cinema->delete());
-    }
-
-    /**
-     *  Lấy danh sách phòng thuộc rạp
-     */
-    public function getRoomsByCinema(int $cinemaId)
-    {
-        $cinema = Cinema::with('rooms:id,cinema_id,name,status')->find($cinemaId);
-        return $cinema ? $cinema->rooms : collect(); // trả về Collection thay vì []
-    }
-
-    /**
-     *  Lấy toàn bộ lịch chiếu của 1 rạp (gộp các phòng)
-     */
-    public function getShowtimesByCinema(int $cinemaId)
-    {
-        return Showtime::with(['movie:id,title', 'room:id,name,cinema_id'])
-            ->whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId))
+        return Showtime::with([
+            'movie:id,title,poster,format,language',
+            'room:id,name'
+        ])
+            ->whereIn('room_id', $roomIds)
+            ->when($date, fn($q) => $q->where('show_date', $date))
             ->orderBy('show_date')
             ->orderBy('show_time')
             ->get();
     }
 
     /**
-     *  Thống kê tổng quan rạp
+     * Thống kê tổng quan rạp duy nhất
      */
     public function getCinemaStatistics(): array
     {
-        $totalCinemas    = Cinema::count();
-        $activeCinemas   = Cinema::where('status', 'active')->count();
-        $inactiveCinemas = Cinema::where('status', 'inactive')->count();
-        $totalRooms      = Room::count();
-
-        // Thống kê số lượng phòng theo từng rạp
-        $roomsByCinema = Room::select('cinema_id', DB::raw('COUNT(*) as total'))
-            ->groupBy('cinema_id')
-            ->pluck('total', 'cinema_id')
-            ->toArray();
+        $totalRooms      = Room::where('cinema_id', 1)->count();
 
         return [
-            'total_cinemas'    => $totalCinemas,
-            'active_cinemas'   => $activeCinemas,
-            'inactive_cinemas' => $inactiveCinemas,
+            'cinema_id'        => 1,
             'total_rooms'      => $totalRooms,
-            'rooms_by_cinema'  => $roomsByCinema,
+            'total_showtimes'  => Showtime::whereIn(
+                'room_id',
+                Room::where('cinema_id', 1)->pluck('id')
+            )->count(),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SeatStatusUpdateRequest;
 use App\Http\Requests\RoomStoreRequest;
 use App\Http\Requests\RoomUpdateRequest;
 use App\Http\Resources\RoomResource;
@@ -10,6 +11,7 @@ use App\Http\Validator\Room\RoomFilterValidator;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use App\Models\Showtime;
 
 class RoomController extends Controller
 {
@@ -22,7 +24,9 @@ class RoomController extends Controller
         $this->validator = $validator;
     }
 
-    // Lấy danh sách phòng chiếu (phân trang, tìm kiếm, lọc)
+    /**
+     * Danh sách phòng
+     */
     public function index(Request $request): JsonResponse
     {
         $validation = $this->validator->validateWithStatus($request->query());
@@ -32,7 +36,6 @@ class RoomController extends Controller
 
         $filters = $request->only([
             'search',
-            'cinema_id',
             'status',
             'sort_by',
             'sort_order',
@@ -47,15 +50,17 @@ class RoomController extends Controller
                 'items' => RoomResource::collection($rooms),
                 'pagination' => [
                     'current_page' => $rooms->currentPage(),
-                    'per_page' => $rooms->perPage(),
-                    'total' => $rooms->total(),
-                    'last_page' => $rooms->lastPage(),
+                    'per_page'     => $rooms->perPage(),
+                    'total'        => $rooms->total(),
+                    'last_page'    => $rooms->lastPage(),
                 ],
             ],
         ]);
     }
 
-    // Lấy chi tiết phòng chiếu
+    /**
+     * Chi tiết phòng
+     */
     public function show(int $id): JsonResponse
     {
         $room = $this->service->getRoomById($id);
@@ -69,33 +74,31 @@ class RoomController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new RoomResource($room->load('cinema')),
+            'data' => new RoomResource($room),
         ]);
     }
 
-    // Tạo mới phòng chiếu
+    /**
+     * Tạo phòng mới
+     */
     public function store(RoomStoreRequest $request): JsonResponse
     {
-        try {
-            $room = $this->service->createRoom($request->validated());
+        $room = $this->service->createRoom($request->validated());
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tạo phòng chiếu thành công',
-                'data' => new RoomResource($room),
-            ], Response::HTTP_CREATED);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lỗi khi tạo phòng chiếu: ' . $e->getMessage(),
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo phòng chiếu thành công',
+            'data'    => new RoomResource($room)
+        ], 201);
     }
 
-    // Cập nhật thông tin phòng chiếu
+    /**
+     * Cập nhật phòng
+     */
     public function update(RoomUpdateRequest $request, int $id): JsonResponse
     {
         $room = $this->service->getRoomById($id);
+
         if (!$room) {
             return response()->json([
                 'success' => false,
@@ -103,19 +106,45 @@ class RoomController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        $updatedRoom = $this->service->updateRoom($room, $request->validated());
+        // Không cho sửa seat_map nếu có suất chiếu tương lai
+        if ($request->has('seat_map')) {
+
+            $hasFutureShowtime = Showtime::where('room_id', $room->id)
+                ->where('show_date', '>=', now()->format('Y-m-d'))
+                ->exists();
+
+            if ($hasFutureShowtime) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể sửa sơ đồ ghế khi phòng đang có suất chiếu trong tương lai.',
+                ], 409);
+            }
+        }
+
+
+        try {
+            $updated = $this->service->updateRoom($room, $request->validated());
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 409);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật phòng chiếu thành công',
-            'data' => new RoomResource($updatedRoom),
+            'data'    => new RoomResource($updated),
         ]);
     }
 
-    // Xóa phòng chiếu
+    /**
+     * Xóa phòng
+     */
     public function destroy(int $id): JsonResponse
     {
         $room = $this->service->getRoomById($id);
+
         if (!$room) {
             return response()->json([
                 'success' => false,
@@ -123,7 +152,14 @@ class RoomController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        $this->service->deleteRoom($room);
+        try {
+            $this->service->deleteRoom($room);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 409);
+        }
 
         return response()->json([
             'success' => true,
@@ -131,18 +167,9 @@ class RoomController extends Controller
         ]);
     }
 
-    // Lấy danh sách phòng chiếu theo rạp
-    public function byCinema(int $cinemaId): JsonResponse
-    {
-        $rooms = $this->service->getRoomsByCinema($cinemaId);
-
-        return response()->json([
-            'success' => true,
-            'data' => RoomResource::collection($rooms),
-        ]);
-    }
-
-    // Cập nhật trạng thái phòng chiếu
+    /**
+     * Đổi trạng thái phòng
+     */
     public function changeStatus(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
@@ -157,50 +184,121 @@ class RoomController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        $updatedRoom = $this->service->updateRoom($room, ['status' => $validated['status']]);
+
+        if ($validated['status'] === 'closed') {
+            $hasFuture = Showtime::where('room_id', $id)
+                ->where('show_date', '>=', now()->format('Y-m-d'))
+                ->exists();
+
+            if ($hasFuture) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể đóng phòng vì đang có suất chiếu chưa diễn ra.',
+                ], 409);
+            }
+        }
+
+        $updated = $this->service->updateRoom($room, [
+            'status' => $validated['status']
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật trạng thái phòng chiếu thành công',
-            'data' => new RoomResource($updatedRoom),
+            'data' => new RoomResource($updated),
         ]);
     }
 
-    // Thống kê tổng quan phòng chiếu
+    /**
+     * Thống kê phòng
+     */
     public function statistics(): JsonResponse
     {
         return response()->json([
             'success' => true,
-            'data' => $this->service->getStatistics(),
+            'data'    => $this->service->getStatistics(),
         ]);
     }
 
-    // Thống kê phòng chiếu theo rạp
-    public function statisticsByCinema(): JsonResponse
+    /**
+     * Cập nhật trạng thái ghế vật lý + đồng bộ suất chiếu tương lai
+     */
+    public function updateSeatStatus(SeatStatusUpdateRequest $request, int $roomId, string $seatCode)
     {
-        $data = $this->service->getStatisticsByCinema();
+        $room = $this->service->getRoomById($roomId);
 
-        return response()->json([
-            'success' => true,
-            'data' => $data,
-        ]);
-    }
-
-    // Thống kê các phòng chiếu của một rạp cụ thể
-    public function statisticsByCinemaId(int $cinemaId)
-    {
-        $data = $this->service->getStatisticsByCinemaId($cinemaId);
-
-        if (!$data) {
+        if (!$room) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không tìm thấy rạp hoặc rạp này chưa có phòng chiếu.',
+                'message' => 'Không tìm thấy phòng chiếu',
             ], 404);
         }
 
+        $seatMap = $room->seat_map ?? [];
+        $updated = false;
+
+        foreach ($seatMap as &$row) {
+            foreach ($row as &$seat) {
+
+                if (is_string($seat)) {
+                    if ($seat === $seatCode) {
+                        $seat = [
+                            'code' => $seat,
+                            'type' => 'normal',
+                            'status' => $request->status,
+                        ];
+                        $updated = true;
+                        break;
+                    }
+                }
+
+                if (is_array($seat)) {
+                    if (($seat['code'] ?? null) === $seatCode) {
+                        $seat['status'] = $request->status;
+                        $updated = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($updated) break;
+        }
+
+        if (!$updated) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy ghế trong sơ đồ phòng.',
+            ], 404);
+        }
+
+        // Lưu seat_map
+        $room->seat_map = $seatMap;
+        $room->save();
+
+        /**
+         * Đồng bộ ghế suất chiếu tương lai
+         * active  → available
+         * broken  → unavailable
+         * blocked → unavailable
+         */
+        $newSeatStatus = $request->status === 'active'
+            ? 'available'
+            : 'unavailable';
+
+        Showtime::where('room_id', $roomId)
+            ->where('show_date', '>=', today())
+            ->each(function ($showtime) use ($seatCode, $newSeatStatus) {
+                $seat = $showtime->seats()->where('seat_code', $seatCode)->first();
+                if ($seat) {
+                    $seat->status = $newSeatStatus;
+                    $seat->save();
+                }
+            });
+
         return response()->json([
             'success' => true,
-            'data' => $data,
+            'message' => 'Cập nhật trạng thái ghế thành công.',
+            'data' => new RoomResource($room),
         ]);
     }
 }

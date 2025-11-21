@@ -8,31 +8,48 @@ class RoomStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Chỉ admin hoặc staff mới được thêm phòng
-        return $this->user() && in_array($this->user()->role, ['admin']);
+        // Chỉ admin được phép tạo phòng
+        return $this->user() && $this->user()->role === 'admin';
     }
 
     public function rules(): array
     {
         return [
-            'cinema_id'   => 'required|exists:cinemas,id',
-            'name'        => 'required|string|max:50',
-            // Cho phép gửi seat_map dạng array, Laravel sẽ tự cast sang JSON
-            'seat_map'    => 'nullable|array',
-            'seat_map.*'  => 'array', // Mỗi hàng ghế là 1 mảng
-            'total_seats' => 'sometimes|integer|min:0',
-            'status'      => 'sometimes|in:active,maintenance,closed',
+            // Tên phòng — bắt buộc & không trùng
+            'name'       => 'required|string|max:50|unique:rooms,name',
+
+            // seat_map: mảng các hàng ghế
+            'seat_map'         => 'required|array|min:1',
+            'seat_map.*'       => 'array|min:1',
+
+            // Cho phép ghế dạng string ("A1") hoặc object
+            // Nếu là object thì code/type/price là tùy chọn
+            'seat_map.*.*.code'  => 'sometimes|string|max:10',
+            'seat_map.*.*.type'  => 'sometimes|string|max:20',
+            'seat_map.*.*.price' => 'sometimes|numeric|min:0|max:1000000',
+            'seat_map.*.*.status' => 'sometimes|string|in:active,broken,blocked',
+
+            // Trạng thái phòng khi tạo
+            'status'     => 'sometimes|in:active,maintenance,closed',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'cinema_id.required' => 'Vui lòng chọn rạp cho phòng chiếu.',
-            'cinema_id.exists'   => 'Rạp được chọn không tồn tại.',
-            'name.required'      => 'Tên phòng chiếu không được để trống.',
-            'seat_map.array'     => 'Sơ đồ ghế phải là định dạng mảng hợp lệ.',
-            'status.in'          => 'Trạng thái phòng không hợp lệ.',
+            'name.required' => 'Tên phòng chiếu là bắt buộc.',
+            'name.unique'   => 'Tên phòng chiếu đã tồn tại.',
+            'name.max'      => 'Tên phòng không vượt quá 50 ký tự.',
+
+            'seat_map.required' => 'Sơ đồ ghế là bắt buộc.',
+            'seat_map.array'    => 'Sơ đồ ghế phải là dạng mảng.',
+            'seat_map.*.array'  => 'Mỗi hàng ghế phải là dạng mảng.',
+
+            'seat_map.*.*.code.string'  => 'Mã ghế phải là chuỗi ký tự.',
+            'seat_map.*.*.price.numeric' => 'Giá ghế phải là số hợp lệ.',
+            'seat_map.*.*.price.min'     => 'Giá ghế không được âm.',
+
+            'status.in' => 'Trạng thái phòng không hợp lệ.',
         ];
     }
 }

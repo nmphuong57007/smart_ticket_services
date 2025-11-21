@@ -12,7 +12,6 @@ class Showtime extends Model
     protected $fillable = [
         'movie_id',
         'room_id',
-        'cinema_id',
         'show_date',
         'show_time',
         'price',
@@ -21,7 +20,7 @@ class Showtime extends Model
     ];
 
     /**
-     * Quan hệ: Lịch chiếu -> Phim
+     * Quan hệ: Suất chiếu -> Phim
      */
     public function movie()
     {
@@ -29,7 +28,8 @@ class Showtime extends Model
     }
 
     /**
-     * Quan hệ: Lịch chiếu -> Phòng chiếu
+     * Quan hệ: Suất chiếu -> Phòng chiếu
+     * (phòng thuộc rạp mặc định ID = 1)
      */
     public function room()
     {
@@ -37,19 +37,19 @@ class Showtime extends Model
     }
 
     /**
-     * Quan hệ: Lịch chiếu -> Rạp chiếu
+     * Quan hệ: Suất chiếu -> Ghế theo suất chiếu
      */
-    public function cinema()
+    public function seats()
     {
-        return $this->belongsTo(Cinema::class);
+        return $this->hasMany(Seat::class);
     }
 
     /**
-     * Lấy danh sách ghế của phòng (không phải ghế theo suất chiếu)
-     * Dùng khi hiển thị sơ đồ ghế phòng.
+     * Lấy seat_map của phòng để frontend hiển thị sơ đồ ghế
+     * GHẾ THẬT vẫn thuộc showtime (không thuộc room)
      */
-    public function getRoomSeatsAttribute()
+    public function getSeatMapAttribute()
     {
-        return $this->room?->seats ?? collect();
+        return $this->room?->seat_map ?? [];
     }
 }
