@@ -2,68 +2,81 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\Showtime;
 use App\Models\Room;
 use App\Models\Movie;
-use Faker\Factory as Faker;
+use App\Http\Services\Showtime\ShowtimeService;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class ShowtimesSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = Faker::create('vi_VN');
-
-        // Các khung giờ chiếu phổ biến trong rạp
-        $showTimes = ['08:00', '10:30', '13:00', '15:30', '18:00', '20:30', '22:45'];
-
-        // Các định dạng và ngôn ngữ
-        $formats = ['2D', '3D', 'IMAX', '4DX'];
-        $languages = ['sub', 'dub', 'narrated'];
-
-        $rooms = Room::all();
+        $rooms  = Room::all();
         $movies = Movie::all();
 
-        // Xoá dữ liệu cũ để seed lại
-        Showtime::query()->delete();
+        if ($rooms->isEmpty() || $movies->isEmpty()) {
+            echo "Rooms hoặc Movies đang rỗng.\n";
+            return;
+        }
 
-        $showtimeData = [];
+        // XÓA nhưng không TRUNCATE tránh lỗi FK
+        DB::table('showtimes')->delete();
 
-        foreach ($rooms as $room) {
-            // Mỗi phòng chiếu trong 7 ngày tới
-            for ($i = 0; $i < 7; $i++) {
-                $showDate = now()->addDays($i)->format('Y-m-d');
+        $formats   = ['2D', '3D'];
+        $languages = ['sub', 'dub', 'narrated'];
 
-                // Mỗi ngày, phòng chiếu ngẫu nhiên 2 phim khác nhau
-                $dailyMovies = $movies->random(2);
+        $today = now()->format('Y-m-d');
+        $weekday = now()->dayOfWeekIso; // 1–7
 
-                foreach ($dailyMovies as $movie) {
-                    // Mỗi phim có 3–5 suất chiếu khác nhau trong ngày
-                    $numShowtimes = rand(3, 5);
-                    $selectedTimes = $faker->randomElements($showTimes, $numShowtimes);
+        // base price từ config
+        $priceConfig = config('pricing.base_price');
+        $basePrice = $weekday >= 6 ? $priceConfig['weekend'] : $priceConfig['weekday'];
 
-                    foreach ($selectedTimes as $time) {
-                        $showtimeData[] = [
-                            'movie_id' => $movie->id,
-                            'room_id' => $room->id,
-                            'show_date' => $showDate,
-                            'show_time' => $time,
-                            'price' => $faker->randomElement([65000, 75000, 85000, 90000, 100000, 120000]),
-                            'format' => $faker->randomElement($formats),
-                            'language_type' => $faker->randomElement($languages),
-                        ];
-                    }
-                }
+        // Danh sách giờ cố định
+        $slots = [
+            '08:00',
+            '10:30',
+            '13:00',
+            '15:30',
+            '18:00',
+            '20:30'
+        ];
+
+        $service = app(ShowtimeService::class);
+        $count = 0;
+
+        $roomIndex = 0;
+        $slotIndex = 0;
+
+        foreach ($movies as $movie) {
+
+            // Chọn phòng theo vòng lặp
+            $room = $rooms[$roomIndex % $rooms->count()];
+            $roomIndex++;
+
+            // Chọn slot theo vòng lặp
+            $slot = $slots[$slotIndex % count($slots)];
+            $slotIndex++;
+
+            $data = [
+                'movie_id'      => $movie->id,
+                'room_id'       => $room->id,
+                'show_date'     => $today,
+                'show_time'     => $slot,
+                'format'        => $formats[array_rand($formats)],
+                'language_type' => $languages[array_rand($languages)],
+                'price'         => $basePrice,
+            ];
+
+            try {
+                $service->createShowtime($data);
+                $count++;
+            } catch (\Exception $e) {
+                echo "Lỗi tạo suất cho phim {$movie->title}: {$e->getMessage()}\n";
             }
         }
 
-        // Bulk insert để tăng tốc
-        $chunks = array_chunk($showtimeData, 1000);
-        foreach ($chunks as $chunk) {
-            DB::table('showtimes')->insert($chunk);
-        }
-
-        echo "Seed dữ liệu lịch chiếu (Showtimes) thành công!\n";
+        echo "ĐÃ TẠO ĐỦ $count SUẤT CHIẾU (100 PHIM = 100 SUẤT) — KHÔNG BỎ SÓT\n";
     }
 }

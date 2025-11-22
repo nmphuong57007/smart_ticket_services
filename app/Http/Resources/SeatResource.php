@@ -9,32 +9,41 @@ class SeatResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'id'         => $this->id,
+            'id'          => $this->id,
+            'showtime_id' => $this->showtime_id,
 
-            // GHẾ
-            'seat_code'  => $this->seat_code,
-            'type'       => $this->type,
-            'status'     => $this->status,
-            'price'      => (float) $this->price,
+            // seat_code giữ nguyên A1, B4...
+            'seat_code'   => $this->seat_code,
 
-            // ROOM
-            'room' => $this->whenLoaded('room', function () {
-                return [
-                    'id'   => $this->room->id,
-                    'name' => $this->room->name,
+            // Loại ghế
+            'type'        => $this->type,
 
-                    // CINEMA (qua room)
-                    'cinema' => $this->whenLoaded('room', function () {
-                        return [
-                            'id'   => $this->room->cinema->id ?? null,
-                            'name' => $this->room->cinema->name ?? null,
-                        ];
-                    }),
-                ];
-            }),
+            // Trạng thái ghế
+            'status'      => $this->status,
 
-            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
-            'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
+            'label'       => $this->getStatusLabel(),
+
+            // Giá ghế theo suất chiếu
+            'price'       => (float) $this->price,
+
+            // Thời gian
+            'created_at'  => optional($this->created_at)
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->format('Y-m-d H:i:s'),
+            'updated_at'  => optional($this->updated_at)
+                ->timezone('Asia/Ho_Chi_Minh')
+                ->format('Y-m-d H:i:s'),
         ];
+    }
+
+    private function getStatusLabel(): string
+    {
+        return match ($this->status) {
+            'available'   => 'Còn trống',
+            'booked'      => 'Đã đặt',
+            'selected'    => 'Đang chọn',
+            'unavailable' => 'Không sử dụng', 
+            default       => 'Không xác định',
+        };
     }
 }

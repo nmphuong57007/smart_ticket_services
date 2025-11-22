@@ -2,10 +2,12 @@
 
 namespace App\Http\Services\Movie;
 
+use Carbon\Carbon;
 use App\Models\Movie;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Collection;
+use App\Models\Showtime;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class MovieService
 {
@@ -32,6 +34,10 @@ class MovieService
             ->when($filters['genre_id'] ?? null, function ($query, $genreId) {
                 // Lọc phim theo thể loại qua bảng pivot
                 $query->whereHas('genres', fn($q) => $q->where('genres.id', $genreId));
+            })
+
+            ->when($filters['genre_slug'] ?? null, function ($query, $genreSlug) {
+                $query->whereHas('genres', fn($q) => $q->where('genres.slug', $genreSlug));
             })
 
             ->orderBy($sortBy, $sortOrder)
@@ -143,5 +149,55 @@ class MovieService
 
                 ->get(),
         ];
+    }
+
+    /**
+     * Validate logic đổi trạng thái phim
+     */
+    public function validateStatusChange(Movie $movie, string $newStatus)
+    {
+        $current = $movie->status;
+        if ($current === 'stopped') {
+            if ($newStatus !== 'stopped') {
+                return 'Phim đã ngừng chiếu — không thể đổi trạng thái.';
+            }
+            return null;
+        }
+
+        if ($current === 'coming') {
+
+            // Không cho chuyển về stopped
+            if ($newStatus === 'stopped') {
+                return 'Phim chưa chiếu — không thể chuyển sang trạng thái NGỪNG CHIẾU.';
+            }
+
+            // coming → showing phải qua ngày công chiếu
+            if ($newStatus === 'showing') {
+                if ($movie->release_date && now()->lt(Carbon::parse($movie->release_date))) {
+                    return 'Không thể chuyển sang ĐANG CHIẾU trước ngày khởi chiếu.';
+                }
+            }
+
+            return null; 
+        }
+
+        // showing → coming (cấm)
+        if ($current === 'showing' && $newStatus === 'coming') {
+            return 'Phim đang chiếu — không thể chuyển về COMING.';
+        }
+
+        // showing → stopped (chỉ khi KHÔNG còn showtime tương lai)
+        if ($current === 'showing' && $newStatus === 'stopped') {
+
+            $hasFuture = Showtime::where('movie_id', $movie->id)
+                ->where('show_date', '>=', now()->format('Y-m-d'))
+                ->exists();
+
+            if ($hasFuture) {
+                return 'Phim vẫn còn suất chiếu — không thể NGỪNG CHIẾU.';
+            }
+        }
+
+        return null; // Cho phép
     }
 }

@@ -23,15 +23,15 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,    // tạo products sau khi có category
 
             AdminUserSeeder::class,
-            CinemasSeeder::class,
-            RoomsSeeder::class,
+            CinemaSeeder::class,
+            RoomsFixedSeeder::class,
             GenresSeeder::class,
             MoviesSeeder::class,
             ShowtimesSeeder::class,
-            SeatSeeder::class,
+            UsersSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
- feat/quan_li_combo
+
             ContentsSeeder::class,
 
         ]);

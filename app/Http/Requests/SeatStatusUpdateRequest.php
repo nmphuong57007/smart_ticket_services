@@ -4,18 +4,17 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class SeatChangeStatusRequest extends FormRequest
+class SeatStatusUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Staff + Admin được đổi thủ công
-        return $this->user() && in_array($this->user()->role, ['admin', 'staff']);
+        return $this->user() && $this->user()->role === 'admin';
     }
 
     public function rules(): array
     {
         return [
-            'status' => ['required', 'in:available,selected,booked'],
+            'status' => 'required|in:active,broken,blocked',
         ];
     }
 
@@ -23,7 +22,7 @@ class SeatChangeStatusRequest extends FormRequest
     {
         return [
             'status.required' => 'Trạng thái ghế là bắt buộc.',
-            'status.in'       => 'Trạng thái ghế không hợp lệ. (available, selected, booked)',
+            'status.in' => 'Trạng thái phải là active, broken hoặc blocked.',
         ];
     }
 }

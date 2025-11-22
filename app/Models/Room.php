@@ -4,17 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{
-    BelongsTo,
-    HasMany,
-    HasManyThrough
-};
 
 class Room extends Model
 {
     use HasFactory;
-
-    public $timestamps = true;
 
     protected $fillable = [
         'cinema_id',
@@ -25,8 +18,8 @@ class Room extends Model
     ];
 
     protected $casts = [
-        'seat_map' => 'array',
-        'total_seats' => 'integer',
+        'seat_map'     => 'array',
+        'total_seats'  => 'integer',
     ];
 
     protected $attributes = [
@@ -34,7 +27,7 @@ class Room extends Model
     ];
 
     /**
-     * Booted: tự tính total_seats mỗi khi save
+     * Hook saving: tự động tính total_seats mỗi khi lưu
      */
     protected static function booted()
     {
@@ -48,71 +41,53 @@ class Room extends Model
     }
 
     /**
-     * Quan hệ với Cinema
+     * Quan hệ: Room -> Cinema (1 rạp duy nhất)
      */
-    public function cinema(): BelongsTo
+    public function cinema()
     {
         return $this->belongsTo(Cinema::class);
     }
 
     /**
-     * Quan hệ với showtimes
+     * Quan hệ: Room -> Showtime
+     * (Ghế nằm ở Showtime, không nằm ở Room)
      */
-    public function showtimes(): HasMany
+    public function showtimes()
     {
         return $this->hasMany(Showtime::class);
     }
 
     /**
-     * Quan hệ với seats thông qua showtimes
-     */
-    public function seats()
-    {
-        return $this->hasMany(Seat::class);
-    }
-
-    /**
-     * Setter seat_map: luôn cast array
+     * seat_map mutator — luôn lưu dưới dạng JSON
      */
     public function setSeatMapAttribute($value): void
     {
         $map = is_array($value) ? $value : json_decode($value, true);
         $this->attributes['seat_map'] = json_encode($map ?? []);
-        // total_seats sẽ tự tính trong booted() khi save
     }
 
     /**
-     * Tính tổng số ghế dựa trên seat_map
+     * Tính tổng ghế trong seat_map
      */
     public function computeTotalSeats(array $seatMap): int
     {
         $count = 0;
+
         foreach ($seatMap as $row) {
             if (!is_array($row)) continue;
+
             foreach ($row as $seat) {
+                // Case 1: ghế dạng string: "A1"
                 if (is_string($seat)) {
                     $count++;
-                } elseif (is_array($seat) && !empty($seat['code'])) {
+                }
+                // Case 2: ghế dạng object: ["code" => "A1", "type" => "vip"]
+                elseif (is_array($seat) && !empty($seat['code'])) {
                     $count++;
                 }
             }
         }
+
         return $count;
-    }
-
-    /**
-     * Scope lọc theo trạng thái
-     */
-    public function scopeStatus($query, string $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    /**
-     * Scope lọc theo rạp
-     */
-    public function scopeCinema($query, int $cinemaId)
-    {
-        return $query->where('cinema_id', $cinemaId);
     }
 }

@@ -18,7 +18,8 @@ class MovieFilterValidator extends BaseValidator
             'per_page' => 'nullable|integer|min:1|max:100',
             'search' => 'nullable|string|max:255',
             'status' => 'nullable|in:coming,showing,stopped',
-            'genre' => 'nullable|string|max:100',
+            'genre_id' => 'nullable|integer|exists:genres,id',
+            'genre_slug' => 'nullable|string|exists:genres,slug',
             'sort_by' => 'nullable|in:id,title,release_date,duration,created_at,status,genre,format',
             'sort_order' => 'nullable|in:asc,desc'
         ];
@@ -39,8 +40,8 @@ class MovieFilterValidator extends BaseValidator
             'per_page.max' => 'Số bản ghi mỗi trang không được vượt quá 100',
             'search.string' => 'Từ khóa tìm kiếm phải là chuỗi ký tự',
             'search.max' => 'Từ khóa tìm kiếm không được vượt quá 255 ký tự',
-            'genre.string' => 'Thể loại phải là chuỗi ký tự',
-            'genre.max' => 'Thể loại không được vượt quá 100 ký tự',
+            'genre_id.integer' => 'Thể loại phải là số nguyên',
+            'genre_id.exists' => 'Thể loại không tồn tại',
             'status.in' => 'Trạng thái phim phải là một trong: coming, showing, stopped',
             'sort_by.in' => 'Trường sắp xếp phải là một trong: id, title, release_date, duration, created_at, status, genre, format',
             'sort_order.in' => 'Hướng sắp xếp phải là asc hoặc desc'
