@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
 
         // Gọi các seeder theo thứ tự logic (quan hệ phụ thuộc)
         $this->call([
+
  feat/promotions_post
             AdminUserSeeder::class,  // tạo user trước
             CinemasSeeder::class,      // tạo cinema trước rooms
@@ -31,16 +32,18 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,    // tạo products sau khi có category
 
             RoomsSeeder::class,
+
             GenresSeeder::class,
 feat/promotions_post
           
 
             MoviesSeeder::class,
             ShowtimesSeeder::class,
-            SeatSeeder::class,
+            UsersSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
-            ContentsSeeder::class,       
+
+            ContentsSeeder::class,
 
         ]);
 

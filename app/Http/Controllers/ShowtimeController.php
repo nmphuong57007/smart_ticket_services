@@ -5,257 +5,287 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Services\Showtime\ShowtimeService;
 use App\Http\Validator\Showtime\ShowtimeFilterValidator;
+use App\Http\Requests\Showtime\StoreShowtimeRequest;
+use App\Http\Requests\Showtime\UpdateShowtimeRequest;
+use App\Http\Resources\ShowtimeResource;
 
 class ShowtimeController extends Controller
 {
-    protected ShowtimeService $showtimeService;
-    protected ShowtimeFilterValidator $showtimeFilterValidator;
-
+    protected ShowtimeService $service;
+    protected ShowtimeFilterValidator $validator;
 
     public function __construct(
-        ShowtimeService $showtimeService,
-        ShowtimeFilterValidator $showtimeFilterValidator
+        ShowtimeService $service,
+        ShowtimeFilterValidator $validator
     ) {
-        $this->showtimeService = $showtimeService;
-        $this->showtimeFilterValidator = $showtimeFilterValidator;
+        $this->service   = $service;
+        $this->validator = $validator;
     }
 
     /**
-     * Lấy danh sách lịch chiếu (lọc theo rạp, phòng, phim, ngày...)
+     * Danh sách lịch chiếu (lọc + phân trang)
      */
     public function index(Request $request)
     {
-        try {
-            // Validate query parameters
-            $validationResult = $this->showtimeFilterValidator->validateWithStatus($request->query());
-            if (!$validationResult['success']) {
-                return response([
-                    'success' => false,
-                    'message' => 'Dữ liệu không hợp lệ',
-                    'errors' => $validationResult['errors']
-                ], 422);
-            }
-
-            // Gom filters
-            $filters = [
-                'cinema_id'  => $request->query('cinema_id'),
-                'room_id'    => $request->query('room_id'),
-                'movie_id'   => $request->query('movie_id'),
-                'show_date'  => $request->query('show_date'),
-                'from_date'  => $request->query('from_date'),
-                'to_date'    => $request->query('to_date'),
-                'sort_by'    => $request->query('sort_by', 'show_date'),
-                'sort_order' => $request->query('sort_order', 'asc'),
-                'per_page'   => $request->query('per_page', 15)
-            ];
-
-            $showtimes = $this->showtimeService->getShowtimes($filters);
-
-            // Trả về dữ liệu có phân trang
-            return response([
-                'success' => true,
-                'message' => 'Lấy danh sách lịch chiếu thành công',
-                'data' => [
-                    'showtimes' => $showtimes->items(),
-                    'pagination' => [
-                        'current_page' => $showtimes->currentPage(),
-                        'last_page' => $showtimes->lastPage(),
-                        'per_page' => $showtimes->perPage(),
-                        'total' => $showtimes->total(),
-                        'from' => $showtimes->firstItem(),
-                        'to' => $showtimes->lastItem()
-                    ]
-                ]
-            ], 200);
-        } catch (\Exception $e) {
-            return response([
+        $validation = $this->validator->validateWithStatus($request->query());
+        if (!$validation['success']) {
+            return response()->json([
                 'success' => false,
-                'message' => 'Lấy danh sách lịch chiếu thất bại',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors'  => $validation['errors']
+            ], 422);
         }
+
+        $filters = $request->only([
+            'room_id',
+            'movie_id',
+            'show_date',
+            'from_date',
+            'to_date',
+            'sort_by',
+            'sort_order',
+            'per_page'
+        ]);
+
+        $showtimes = $this->service->getShowtimes($filters);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách lịch chiếu thành công',
+            'data' => [
+                'items' => ShowtimeResource::collection($showtimes),
+                'pagination' => [
+                    'page'      => $showtimes->currentPage(),
+                    'per_page'  => $showtimes->perPage(),
+                    'total'     => $showtimes->total(),
+                    'last_page' => $showtimes->lastPage(),
+                ]
+            ]
+        ]);
     }
 
     /**
-     * Lấy tất cả các ngày chiếu của một phòng
+     * Decode error service throw
+     */
+    private function decodeException(\Exception $e)
+    {
+        $msg = json_decode($e->getMessage(), true);
+
+        if (!is_array($msg)) {
+            return [
+                'message'  => $e->getMessage(),
+                'conflict' => null
+            ];
+        }
+
+        return [
+            'message'  => $msg['message'] ?? $e->getMessage(),
+            'conflict' => $msg['conflict'] ?? null
+        ];
+    }
+
+    /**
+     * Tạo suất chiếu
+     */
+    public function store(StoreShowtimeRequest $request)
+    {
+        try {
+            $showtime = $this->service->createShowtime($request->validated());
+        } catch (\Exception $e) {
+
+            $err = $this->decodeException($e);
+
+            return response()->json([
+                'success'  => false,
+                'message'  => $err['message'],
+                'conflict' => $err['conflict']
+            ], 409);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo suất chiếu thành công',
+            'data'    => new ShowtimeResource($showtime)
+        ], 201);
+    }
+
+    /**
+     * Cập nhật suất chiếu
+     */
+    public function update(UpdateShowtimeRequest $request, int $id)
+    {
+        try {
+            $updated = $this->service->updateShowtime($id, $request->validated());
+        } catch (\Exception $e) {
+
+            $err = $this->decodeException($e);
+
+            return response()->json([
+                'success'  => false,
+                'message'  => $err['message'],
+                'conflict' => $err['conflict']
+            ], 409);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật suất chiếu thành công',
+            'data'    => new ShowtimeResource($updated)
+        ]);
+    }
+
+    /**
+     * Xóa suất chiếu
+     */
+    public function destroy(int $id)
+    {
+        try {
+            $this->service->deleteShowtime($id);
+        } catch (\Exception $e) {
+
+            $err = $this->decodeException($e);
+
+            return response()->json([
+                'success'  => false,
+                'message'  => $err['message'],
+                'conflict' => $err['conflict']
+            ], 409);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Xóa suất chiếu thành công'
+        ]);
+    }
+
+    /**
+     * Lấy danh sách ngày chiếu theo phòng
      */
     public function showDates(int $roomId)
     {
-        try {
-            $dates = $this->showtimeService->getShowDatesByRoom($roomId);
+        $dates = $this->service->getShowDatesByRoom($roomId);
 
-            return response([
-                'success' => true,
-                'message' => 'Lấy danh sách ngày chiếu thành công',
-                'data' => ['dates' => $dates]
-            ], 200);
-        } catch (\Exception $e) {
-            return response([
-                'success' => false,
-                'message' => 'Lấy danh sách ngày chiếu thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách ngày chiếu thành công',
+            'data'    => ['dates' => $dates]
+        ]);
     }
 
     /**
-     * Lấy danh sách tất cả phòng có lịch chiếu
+     * Lấy sơ đồ ghế của suất chiếu (public)
+     */
+    public function seats(int $id)
+    {
+        $showtime = $this->service->getShowtimeById($id);
+
+        if (!$showtime) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy suất chiếu'
+            ], 404);
+        }
+
+        $room = $showtime->room;
+        if (!$room) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Suất chiếu không thuộc phòng nào'
+            ], 404);
+        }
+
+        $seatMap = $room->seat_map ?? [];
+        $seats   = $showtime->seats()->get()->keyBy('seat_code');
+
+        $result = [];
+
+        foreach ($seatMap as $row) {
+            $rowData = [];
+
+            foreach ($row as $seat) {
+
+                if (is_string($seat)) {
+                    $code = $seat;
+                    $physical = [
+                        'code'   => $code,
+                        'type'   => 'normal',
+                        'status' => 'active'
+                    ];
+                } else {
+                    $code = $seat['code'];
+                    $physical = [
+                        'code'   => $seat['code'],
+                        'type'   => $seat['type'] ?? 'normal',
+                        'status' => $seat['status'] ?? 'active'
+                    ];
+                }
+
+                $seatShowtime = $seats[$code] ?? null;
+
+                $rowData[] = [
+                    'code'            => $code,
+                    'type'            => $physical['type'],
+                    'physical_status' => $physical['status'],
+                    'status'          => $seatShowtime->status ?? 'available',
+                    'price'           => $seatShowtime->price ?? $showtime->price,
+                ];
+            }
+
+            $result[] = $rowData;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy sơ đồ ghế thành công',
+            'data'    => [
+                'showtime_id' => $showtime->id,
+                'room_id'     => $room->id,
+                'seat_map'    => $result
+            ]
+        ]);
+    }
+
+    /**
+     * Lấy các phòng có suất chiếu
      */
     public function rooms()
     {
-        try {
-            $rooms = $this->showtimeService->getRoomsWithShowtimes();
-
-            return response([
-                'success' => true,
-                'message' => 'Lấy danh sách phòng chiếu thành công',
-                'data' => ['rooms' => $rooms]
-            ], 200);
-        } catch (\Exception $e) {
-            return response([
-                'success' => false,
-                'message' => 'Lấy danh sách phòng chiếu thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy danh sách phòng thành công',
+            'data'    => ['rooms' => $this->service->getRoomsWithShowtimes()]
+        ]);
     }
 
     /**
-     * Lấy thống kê lịch chiếu
+     * Thống kê lịch chiếu tổng
      */
     public function statistics()
     {
-        try {
-            $stats = $this->showtimeService->getShowtimeStatistics();
-
-            return response([
-                'success' => true,
-                'message' => 'Lấy thống kê lịch chiếu thành công',
-                'data' => ['statistics' => $stats]
-            ], 200);
-        } catch (\Exception $e) {
-            return response([
-                'success' => false,
-                'message' => 'Lấy thống kê lịch chiếu thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy thống kê thành công',
+            'data'    => $this->service->getShowtimeStatistics()
+        ]);
     }
 
     /**
-     * Xem lịch chiếu theo ngày (tất cả phim chiếu trong ngày)
+     * Thống kê lịch chiếu theo ngày
      */
-    public function getByDate(Request $request)
+    public function statisticsByDate(Request $request)
     {
-        try {
-            $date = $request->query('date');
-            if (!$date) {
-                return response([
-                    'success' => false,
-                    'message' => 'Vui lòng truyền tham số date (YYYY-MM-DD)'
-                ], 422);
-            }
-
-            $showtimes = $this->showtimeService->getShowtimesByDate($date);
-
-            return response([
-                'success' => true,
-                'message' => 'Lấy lịch chiếu theo ngày thành công',
-                'data' => $showtimes
-            ], 200);
-        } catch (\Exception $e) {
-            return response([
-                'success' => false,
-                'message' => 'Lấy lịch chiếu theo ngày thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Xem lịch chiếu theo ngày và loại ngôn ngữ (phụ đề, lồng tiếng, thuyết minh)
-     */
-    public function getByDateLanguage(Request $request)
-    {
-        try {
-            $date = $request->query('date');
-            $language = $request->query('language');
-
-            if (!$date || !$language) {
-                return response([
-                    'success' => false,
-                    'message' => 'Thiếu tham số date hoặc language'
-                ], 422);
-            }
-
-            $showtimes = $this->showtimeService->getShowtimesByDateAndLanguage($date, $language);
-
-            return response([
-                'success' => true,
-                'message' => 'Lấy lịch chiếu theo ngày và ngôn ngữ thành công',
-                'data' => $showtimes
-            ], 200);
-        } catch (\Exception $e) {
-            return response([
-                'success' => false,
-                'message' => 'Lấy lịch chiếu theo ngày và ngôn ngữ thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Tạo mới một suất chiếu và sinh ghế tự động
-     */
-    public function store(Request $request)
-    {
-        $data = $request->validate([
-            'movie_id'     => 'required|exists:movies,id',
-            'room_id'      => 'required|exists:rooms,id',
-            'show_date'    => 'required|date_format:Y-m-d',
-            'show_time'    => 'required|date_format:H:i',
-            'price'        => 'nullable|numeric|min:0',
-            'format'       => 'nullable|string|max:50',
-            'language_type' => 'nullable|string|max:50',
+        $request->validate([
+            'date' => 'required|date'
         ]);
 
-        try {
-            // Tạo showtime
-            $showtime = $this->showtimeService->createShowtime($data);
+        $date = $request->query('date');
 
-            return response([
-                'success' => true,
-                'message' => 'Tạo suất chiếu thành công, ghế đã được sinh tự động',
-                'data' => $showtime
-            ], 201);
-        } catch (\Exception $e) {
-            return response([
-                'success' => false,
-                'message' => 'Tạo suất chiếu thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
+        $stats = $this->service->getStatisticsByDate($date);
 
-    /**
-     * Xem toàn bộ lịch chiếu của một phim, gồm ngày, giờ, và ghế còn trống
-     */
-    public function fullShowtimesByMovie(int $movieId)
-    {
-        try {
-            $fullData = $this->showtimeService->getFullShowtimesByMovie($movieId);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Lấy lịch chiếu đầy đủ thành công',
-                'data' => $fullData
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lấy lịch chiếu đầy đủ thất bại',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy thống kê lịch chiếu theo ngày thành công',
+            'data'    => $stats
+        ]);
     }
 }

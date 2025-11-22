@@ -11,12 +11,16 @@ class Seat extends Model
 
     protected $fillable = [
  feat/promotions_post
+ feat/promotions_post
 
 
         'cinema_id',
 
 
         'room_id',
+
+        'showtime_id',     // GHẾ THEO SUẤT CHIẾU
+
         'seat_code',
         'type',
         'status',
@@ -24,24 +28,25 @@ class Seat extends Model
     ];
 
     protected $casts = [
-        'price' => 'float',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'price'       => 'float',
+        'created_at'  => 'datetime',
+        'updated_at'  => 'datetime',
     ];
 
     // Loại ghế
     public const TYPE_NORMAL = 'normal';
-    public const TYPE_VIP = 'vip';
+    public const TYPE_VIP    = 'vip';
 
-    // Trạng thái vật lý ghế
-    public const STATUS_AVAILABLE   = 'available'; // Có thể sử dụng
-    public const STATUS_MAINTENANCE = 'maintenance'; // Đang bảo trì
-    public const STATUS_BROKEN      = 'broken'; // Hỏng
-    public const STATUS_DISABLED    = 'disabled'; // Vô hiệu hoá (không sử dụng được)
+    // Trạng thái dùng khi BOOKING
+    public const STATUS_AVAILABLE = 'available'; // Chưa ai chọn
+    public const STATUS_SELECTED  = 'selected';  // Client đang chọn (chưa thanh toán)
+    public const STATUS_BOOKED    = 'booked';    // Đã mua
 
-    // Quan hệ
-    public function room()
+    /**
+     * GHẾ THUỘC SUẤT CHIẾU
+     */
+    public function showtime()
     {
-        return $this->belongsTo(Room::class);
+        return $this->belongsTo(Showtime::class);
     }
 }

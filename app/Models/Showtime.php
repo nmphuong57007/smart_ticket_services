@@ -9,8 +9,6 @@ class Showtime extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
-
     protected $fillable = [
         'movie_id',
         'room_id',
@@ -21,28 +19,37 @@ class Showtime extends Model
         'language_type',
     ];
 
-    // Lấy thông tin phim
+    /**
+     * Quan hệ: Suất chiếu -> Phim
+     */
     public function movie()
     {
         return $this->belongsTo(Movie::class);
     }
 
-    // Lấy thông tin phòng chiếu
+    /**
+     * Quan hệ: Suất chiếu -> Phòng chiếu
+     * (phòng thuộc rạp mặc định ID = 1)
+     */
     public function room()
     {
         return $this->belongsTo(Room::class);
     }
 
-    // Lấy ghế thông qua phòng chiếu
+    /**
+     * Quan hệ: Suất chiếu -> Ghế theo suất chiếu
+     */
     public function seats()
     {
-        return $this->hasManyThrough(
-            Seat::class,   // Model cuối cùng
-            Room::class,   // Model trung gian
-            'id',          // khóa chính ở Room (Room.id)
-            'room_id',     // khóa ngoại ở Seat (Seat.room_id)
-            'room_id',     // khóa ngoại ở Showtime (Showtime.room_id)
-            'id'           // khóa chính ở Room (Room.id)
-        );
+        return $this->hasMany(Seat::class);
+    }
+
+    /**
+     * Lấy seat_map của phòng để frontend hiển thị sơ đồ ghế
+     * GHẾ THẬT vẫn thuộc showtime (không thuộc room)
+     */
+    public function getSeatMapAttribute()
+    {
+        return $this->room?->seat_map ?? [];
     }
 }

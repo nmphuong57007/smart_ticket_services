@@ -17,104 +17,57 @@ class PointsHistorySeeder extends Seeder
         // Lấy user admin để làm người thực hiện
         $admin = User::where('role', 'admin')->first();
         
-        // Lấy một số user để tạo lịch sử điểm
-        $users = User::where('role', 'customer')->take(3)->get();
+        // Lấy một số user để tạo lịch sử điểm (theo cấu hình)
+        $usersToUse = (int) config('seeder.points_history_users', 50) * (int) config('seeder.multiplier', 1);
+        $users = User::where('role', 'customer')->take($usersToUse)->get();
         
         if ($users->isEmpty()) {
             $this->command->info('Không có customer nào để tạo lịch sử điểm. Vui lòng tạo user trước.');
             return;
         }
 
+        $insertData = [];
+        $now = now();
+        $txPerUser = (int) config('seeder.points_transactions_per_user', 7) * (int) config('seeder.multiplier', 1);
+
         foreach ($users as $user) {
-            // Đặt điểm ban đầu cho user
             $currentPoints = 0;
-            
-            // Tạo các giao dịch mẫu
-            $transactions = [
-                [
-                    'points' => 100,
-                    'type' => 'bonus',
-                    'source' => 'registration',
-                    'description' => 'Thưởng đăng ký tài khoản mới',
-                    'metadata' => ['promotion_code' => 'WELCOME100']
-                ],
-                [
-                    'points' => 50,
-                    'type' => 'earned',
-                    'source' => 'booking',
-                    'description' => 'Tích điểm từ đặt vé xem phim',
-                    'reference_type' => 'booking',
-                    'reference_id' => rand(1, 10),
-                    'metadata' => ['movie' => 'Avengers: Endgame', 'tickets' => 2]
-                ],
-                [
-                    'points' => -30,
-                    'type' => 'spent',
-                    'source' => 'booking',
-                    'description' => 'Sử dụng điểm giảm giá vé xem phim',
-                    'reference_type' => 'booking',
-                    'reference_id' => rand(11, 20),
-                    'metadata' => ['discount_amount' => 30000]
-                ],
-                [
-                    'points' => 25,
-                    'type' => 'earned',
-                    'source' => 'review',
-                    'description' => 'Thưởng viết đánh giá phim',
-                    'reference_type' => 'review',
-                    'reference_id' => rand(1, 5),
-                    'metadata' => ['movie' => 'Spider-Man: No Way Home', 'rating' => 5]
-                ],
-                [
-                    'points' => 200,
-                    'type' => 'bonus',
-                    'source' => 'birthday',
-                    'description' => 'Thưởng sinh nhật',
-                    'metadata' => ['birthday_year' => 2024]
-                ],
-                [
-                    'points' => 75,
-                    'type' => 'earned',
-                    'source' => 'referral',
-                    'description' => 'Thưởng giới thiệu bạn bè',
-                    'reference_type' => 'user',
-                    'reference_id' => rand(1, 100),
-                    'metadata' => ['referred_user_email' => 'friend@example.com']
-                ],
-                [
-                    'points' => -50,
-                    'type' => 'spent',
-                    'source' => 'promotion',
-                    'description' => 'Đổi điểm lấy combo bắp nước',
-                    'reference_type' => 'promotion',
-                    'reference_id' => rand(1, 3),
-                    'metadata' => ['combo_name' => 'Combo Medium']
-                ]
-            ];
 
-            foreach ($transactions as $transaction) {
+            for ($t = 0; $t < $txPerUser; $t++) {
+                // random transaction
+                $points = [100, 50, -30, 25, 200, 75, -50][array_rand([100,50,-30,25,200,75,-50])];
+                $type = $points > 0 ? 'earned' : 'spent';
+                $source = ['booking','review','promotion','referral','birthday','registration'][array_rand(['booking','review','promotion','referral','birthday','registration'])];
+
                 $balanceBefore = $currentPoints;
-                $currentPoints += $transaction['points'];
-                $balanceAfter = $currentPoints;
+                $currentPoints += $points;
 
-                PointsHistory::create([
+                $createdAt = now()->subDays(rand(0, 365))->subHours(rand(0,23));
+
+                $insertData[] = [
                     'user_id' => $user->id,
-                    'points' => $transaction['points'],
+                    'points' => $points,
                     'balance_before' => $balanceBefore,
-                    'balance_after' => $balanceAfter,
-                    'type' => $transaction['type'],
-                    'source' => $transaction['source'],
-                    'reference_type' => $transaction['reference_type'] ?? null,
-                    'reference_id' => $transaction['reference_id'] ?? null,
-                    'description' => $transaction['description'],
-                    'metadata' => json_encode($transaction['metadata'] ?? null),
-                    'created_by' => ($transaction['source'] === 'manual') ? $admin?->id : null,
-                    'created_at' => now()->subDays(rand(1, 30))->subHours(rand(0, 23))
-                ]);
+                    'balance_after' => $currentPoints,
+                    'type' => $type,
+                    'source' => $source,
+                    'reference_type' => null,
+                    'reference_id' => null,
+                    'description' => ucfirst($type) . ' via ' . $source,
+                    'metadata' => null,
+                    'created_by' => $admin?->id,
+                    'created_at' => $createdAt->toDateTimeString(),
+                    'updated_at' => $createdAt->toDateTimeString(),
+                ];
             }
 
-            // Cập nhật điểm cuối cùng cho user
+            // update last points value
             $user->update(['points' => $currentPoints]);
+        }
+
+        // bulk insert
+        foreach (array_chunk($insertData, 2000) as $chunk) {
+            \Illuminate\Support\Facades\DB::table('points_history')->insert($chunk);
         }
     }
 }
