@@ -67,4 +67,18 @@ class Product extends Model
         }
         return $query;
     }
+    public function category()
+    {
+        return $this->belongsTo(ProductCategory::class);
+    }
+
+    public function comboItems()
+    {
+        return $this->hasMany(ComboItem::class, 'combo_id');
+    }
+
+    public function inventoryTransactions()
+    {
+        return $this->hasMany(InventoryTransaction::class);
+    }
 }

@@ -17,6 +17,11 @@ class DatabaseSeeder extends Seeder
 
         // Gọi các seeder theo thứ tự logic (quan hệ phụ thuộc)
         $this->call([
+ feat/quan_li_combo
+              
+            ProductCategorySeeder::class, // tạo category trước products
+            ProductSeeder::class,    // tạo products sau khi có category
+
             AdminUserSeeder::class,
             CinemaSeeder::class,
             RoomsFixedSeeder::class,
@@ -26,7 +31,9 @@ class DatabaseSeeder extends Seeder
             UsersSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
+
             ContentsSeeder::class,
+
         ]);
 
         // Bật lại kiểm tra khóa ngoại

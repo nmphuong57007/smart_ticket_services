@@ -21,10 +21,14 @@ use App\Http\Controllers\GenreController;
 
 use App\Http\Controllers\DiscountController;
 
+use App\Http\Controllers\InventoryController;
+
+
 Route::get(
     '/health-check',
     fn() => response()->json(['status' => 'OK'], 200)
 );
+
 
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
@@ -150,11 +154,23 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
     Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
 });
 
-// Combo routes
-Route::prefix('combos')->group(function () {
-    Route::get('/', [ComboController::class, 'index']); // danh sách public
-    Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 
+Route::prefix('admin/fb/inventory')->group(function () {
+    Route::get('/', [InventoryController::class, 'index']); // xem danh sách tồn
+    Route::post('/{id}/adjust', [InventoryController::class, 'adjust']); // nhập/xuất
+    Route::get('/{id}/history', [InventoryController::class, 'history']); // lịch sử
+});
+
+
+// Combo routes
+ feat/quan_li_combo
+Route::prefix('admin/fb/combos')->group(function () {
+    Route::get('/',     [ComboController::class, 'index']); // danh sách public
+
+    Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
+    Route::post('/', [ComboController::class, 'store']);
+    Route::put('/{id}', [ComboController::class, 'update']);
+    Route::delete('/{id}', [ComboController::class, 'destroy']);
 });
 
 
