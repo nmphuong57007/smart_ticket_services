@@ -207,15 +207,23 @@ Route::prefix('seats')->group(function () {
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
     });
 });
+// PUBLIC ROUTES
+Route::prefix('promotion-posts')->group(function () {
+    Route::get('/', [PromotionPostController::class, 'index']); // Public
+    Route::get('/{id}', [PromotionPostController::class, 'show']); // Public
+});
 
-Route::middleware('auth:sanctum')->group(function () {
-
-    // Promotion Post Routes (Quản lý Bài viết Khuyến mãi)
+// STAFF + ADMIN ROUTES
+Route::middleware(['auth:sanctum', 'role:admin,staff'])->group(function () {
     Route::prefix('admin/promotion-posts')->group(function () {
-        Route::get('/', [PromotionPostController::class, 'index']);      // Danh sách
-        Route::post('/', [PromotionPostController::class, 'store']);     // Tạo mới (Có Upload ảnh)
-        Route::get('/{id}', [PromotionPostController::class, 'show']);   // Chi tiết
-        Route::post('/{id}', [PromotionPostController::class, 'update']); // Cập nhật
+        Route::post('/', [PromotionPostController::class, 'store']);    // Tạo
+        Route::post('/{id}', [PromotionPostController::class, 'update']); // Sửa
+    });
+});
+
+// ADMIN ONLY ROUTES
+Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::prefix('admin/promotion-posts')->group(function () {
         Route::delete('/{id}', [PromotionPostController::class, 'destroy']); // Xóa
     });
 });
