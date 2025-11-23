@@ -20,6 +20,7 @@ use App\Http\Controllers\GenreController;
 
 
 use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\PromotionPostController;
 
 Route::get(
     '/health-check',
@@ -78,7 +79,7 @@ Route::prefix('movies')->group(function () {
     Route::get('/list', [MovieController::class, 'index']); // Lấy danh sách phim (filter, paginate)
     Route::get('/{id}', [MovieController::class, 'show'])->whereNumber('id');  // Lấy chi tiết phim
     Route::get('/{id}/showtimes', [MovieController::class, 'showtimesByMovie'])
-    ->whereNumber('id'); // Lấy lịch chiếu theo phim
+        ->whereNumber('id'); // Lấy lịch chiếu theo phim
 
     // Staff
     Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
@@ -119,7 +120,7 @@ Route::prefix('showtimes')->group(function () {
     Route::get('/statistics', [ShowtimeController::class, 'statistics']); // Thống kê lịch chiếu
     Route::get('/statistics/by-date', [ShowtimeController::class, 'statisticsByDate']); // Thống kê lịch chiếu theo ngày
     Route::get('/{id}/seats', [ShowtimeController::class, 'seats'])
-    ->whereNumber('id'); // Lấy sơ đồ ghế của suất chiếu
+        ->whereNumber('id'); // Lấy sơ đồ ghế của suất chiếu
 
     // ADMIN ONLY
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
@@ -204,5 +205,17 @@ Route::prefix('seats')->group(function () {
     // Chỉ admin: đổi trạng thái seat
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
+    });
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Promotion Post Routes (Quản lý Bài viết Khuyến mãi)
+    Route::prefix('admin/promotion-posts')->group(function () {
+        Route::get('/', [PromotionPostController::class, 'index']);      // Danh sách
+        Route::post('/', [PromotionPostController::class, 'store']);     // Tạo mới (Có Upload ảnh)
+        Route::get('/{id}', [PromotionPostController::class, 'show']);   // Chi tiết
+        Route::post('/{id}', [PromotionPostController::class, 'update']); // Cập nhật
+        Route::delete('/{id}', [PromotionPostController::class, 'destroy']); // Xóa
     });
 });

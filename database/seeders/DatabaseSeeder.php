@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             PointsHistorySeeder::class,
             ComboSeeder::class,
             ContentsSeeder::class,
+            PromotionPostSeeder::class,
         ]);
 
         // Bật lại kiểm tra khóa ngoại
