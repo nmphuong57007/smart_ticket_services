@@ -4,6 +4,7 @@ namespace App\Http\Services\Combo;
 
 use App\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 
 class ComboService
 {
@@ -44,5 +45,50 @@ class ComboService
     public function getComboById(int $id): ?Product
     {
         return Product::combos()->find($id);
+    }
+
+    public function list($request)
+    {
+        return Product::query()
+            ->search($request->keyword)
+            ->priceRange($request->min_price, $request->max_price)
+            ->paginate($request->per_page ?? 10);
+    }
+
+    public function create($data)
+    {
+        if (!empty($data['image']) && $data['image'] instanceof \Illuminate\Http\UploadedFile) {
+            $path = $data['image']->store('products', 'public');
+            $data['image'] = 'storage/' . $path;
+        } else {
+            unset($data['image']);
+        }
+        return Product::create($data);
+    }
+
+    public function update(Product $product, $data)
+    {
+        if (isset($data['image'])) {
+
+            if ($product->image) {
+                Storage::disk('public')->delete(str_replace('storage/', '', $product->image));
+            }
+
+            $path = $data['image']->store('products', 'public');
+            $data['image'] = 'storage/' . $path;
+        }
+
+        $product->update($data);
+
+        return $product;
+    }
+
+    public function delete(Product $product)
+    {
+        if ($product->image) {
+            Storage::disk('public')->delete(str_replace('storage/', '', $product->image));
+        }
+
+        return $product->delete();
     }
 }

@@ -150,13 +150,22 @@ Route::prefix('discounts')->middleware('api.auth')->group(function () {
     Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
 });
 
-// Combo routes
+// Public
 Route::prefix('combos')->group(function () {
     Route::get('/', [ComboController::class, 'index']); // danh sách public
     Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
 
-});
+    // Staff & Admin
+    Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
+        Route::post('/create', [ComboController::class, 'store']);
+        Route::post('/update/{id}', [ComboController::class, 'update']);
+    });
 
+    // Admin only
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::delete('/delete/{id}', [ComboController::class, 'destroy']);
+    });
+});
 
 // Public route xem thông tin vé trước khi đặt
 Route::get('tickets/preview', [TicketController::class, 'preview']);
