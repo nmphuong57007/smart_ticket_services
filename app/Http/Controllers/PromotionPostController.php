@@ -7,17 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Routing\Controller; // Thêm nếu chưa có
 
 class PromotionPostController extends Controller
 {
     /**
-     * 1. LẤY DANH SÁCH (Read All)
-     * GET /admin/promotion-posts
+     * 1. DANH SÁCH
      */
-    public function index(Request $request)
+    public function index()
     {
-        // Lấy danh sách bài viết, phân trang và tải kèm thông tin người tạo
         $posts = PromotionPost::with('creator:id,fullname')
             ->orderBy('published_at', 'desc')
             ->paginate(15);
@@ -30,34 +27,33 @@ class PromotionPostController extends Controller
     }
 
     /**
-     * TẠO MỚI (Store)
-     * POST /admin/promotion-posts
+     * 2. TẠO MỚI
      */
     public function store(Request $request)
     {
-        // 1. Validation
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'image' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'target_url' => 'nullable|string',
             'published_at' => 'nullable|date',
-            'is_published' => 'nullable|boolean'
+            'is_published' => 'nullable|boolean',
         ]);
 
-        // 2. Lấy dữ liệu
-        $data = $request->only(['title', 'description', 'target_url', 'published_at', 'is_published']);
+        $data = $request->only(['title', 'description', 'published_at', 'is_published']);
+        $data['created_by'] = Auth::id(); // Để quan hệ creator hoạt động
+        $data['created_by_name'] = Auth::user()->fullname; // Lưu fullname
 
-        $data['created_by'] = Auth::id();
+
         $data['slug'] = Str::slug($request->title);
 
-        // 3. Upload Ảnh (sửa lại đúng field: image)
+        // Upload ảnh → Trả về URL tuyệt đối
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('promotion_posts', 'public');
-            $data['image_url'] = Storage::url($path);
+
+            // FULL URL
+            $data['image_url'] = asset('storage/' . $path);
         }
 
-        // 4. Tạo bản ghi
         $post = PromotionPost::create($data);
 
         return response()->json([
@@ -67,26 +63,22 @@ class PromotionPostController extends Controller
         ], 201);
     }
 
-
     /**
-     * 2. XEM CHI TIẾT (Show)
-     * GET /admin/promotion-posts/{id}
+     * 3. CHI TIẾT
      */
     public function show($id)
     {
-        // Tìm bài viết theo ID và tải thông tin người tạo
         $post = PromotionPost::with('creator:id,fullname')->findOrFail($id);
 
         return response()->json([
             'success' => true,
-            'message' => 'Chi tiết bài viết khuyến mãi.',
+            'message' => 'Chi tiết bài viết.',
             'data' => $post
         ]);
     }
 
     /**
-     * CẬP NHẬT (Update)
-     * PUT /admin/promotion-posts/{id}
+     * 4. CẬP NHẬT
      */
     public function update(Request $request, $id)
     {
@@ -94,35 +86,38 @@ class PromotionPostController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
-            'image_file' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
-            'target_url' => 'nullable|string|max:255',
+            'image_file' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'description' => 'nullable|string',
             'is_published' => 'boolean',
+            'published_at' => 'nullable|date',
         ]);
 
-        $data = $request->only([
-            'title',
-            'description',
-            'target_url',
-            'is_published',
-            'published_at'
-        ]);
+        $data = $request->only(['title', 'description', 'is_published', 'published_at']);
 
-        // Upload ảnh mới
+        // XỬ LÝ ẢNH
         if ($request->hasFile('image_file')) {
 
-            // Xóa ảnh cũ
-            if ($post->image_url) {
-                $oldPath = str_replace('/storage/', '', $post->image_url);
-                Storage::disk('public')->delete($oldPath);
+            // ---- 1. XÓA ẢNH CŨ ----
+            if (!empty($post->image_url)) {
+
+                // URL => path thật trong storage
+                // Ví dụ: http://127.0.0.1:8000/storage/promotion_posts/abc.png
+                // lấy phần sau "/storage/"
+                $relativePath = str_replace(url('storage') . '/', '', $post->image_url);
+
+                // Xóa file
+                Storage::disk('public')->delete($relativePath);
             }
 
-            // Lưu ảnh mới
+            // ---- 2. LƯU ẢNH MỚI ----
             $path = $request->file('image_file')->store('promotion_posts', 'public');
-            $data['image_url'] = Storage::url($path);
+
+            // Lưu URL đầy đủ để FE dùng được
+            $data['image_url'] = url('storage/' . $path);
         }
 
-        // Cập nhật slug nếu đổi title
-        if ($request->has('title') && $post->title !== $request->title) {
+        // Nếu đổi title thì đổi slug
+        if ($request->title !== $post->title) {
             $data['slug'] = Str::slug($request->title);
         }
 
@@ -130,38 +125,35 @@ class PromotionPostController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Cập nhật bài viết khuyến mãi thành công.',
+            'message' => 'Cập nhật bài viết thành công.',
             'data' => $post->fresh()
         ]);
     }
 
 
     /**
-     * 3. XÓA (Destroy)
-     * DELETE /admin/promotion-posts/{id}
+     * 5. XÓA
      */
     public function destroy($id)
     {
         $post = PromotionPost::findOrFail($id);
 
         try {
-            // 1. Xóa file ảnh khỏi Storage trước (quan trọng)
             if ($post->image_url) {
-                $filePath = str_replace(Storage::url('/'), '', $post->image_url);
-                Storage::disk('public')->delete($filePath);
+                $old = str_replace(asset('storage') . '/', '', $post->image_url);
+                Storage::disk('public')->delete($old);
             }
 
-            // 2. Xóa bản ghi trong Database
             $post->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Xóa bài viết khuyến mãi thành công.'
-            ], 200);
+                'message' => 'Xóa bài viết thành công.'
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi khi xóa bài viết.'
+                'message' => 'Có lỗi xảy ra khi xóa bài viết.'
             ], 500);
         }
     }

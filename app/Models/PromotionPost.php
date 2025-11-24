@@ -16,10 +16,12 @@ class PromotionPost extends Model
         'description',
         'slug',
         'image_url',
-        'target_url',
+
         'published_at',
         'is_published',
         'created_by',
+        'created_by_name'
+
     ];
 
     protected $casts = [
