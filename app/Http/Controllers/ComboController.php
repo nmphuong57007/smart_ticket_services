@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\ComboRequest;
 use App\Http\Services\Combo\ComboService;
 use App\Http\Validator\Combo\ComboFilterValidator;
 use App\Http\Resources\ComboResource;
+use App\Models\Product;
 
 class ComboController extends Controller
 {
@@ -73,5 +75,25 @@ class ComboController extends Controller
             'message' => 'Chi tiết combo',
             'data' => new ComboResource($combo)
         ], 200);
+    }
+
+    public function store(ComboRequest $request)
+    {
+        $product = $this->service->create($request->validated());
+        return new ComboResource($product);
+    }
+
+    public function update(ComboRequest $request, $id)
+    {
+        $product = Product::findOrFail($id);
+        $updated = $this->service->update($product, $request->validated());
+        return new ComboResource($updated);
+    }
+
+    public function destroy($id)
+    {
+        $product = Product::findOrFail($id);
+        $this->service->delete($product);
+        return response()->json(['message' => 'Product deleted']);
     }
 }
