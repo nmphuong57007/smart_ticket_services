@@ -250,7 +250,6 @@ class MovieController extends Controller
 
 
     // Cập nhật trạng thái phim
-    // Cập nhật trạng thái phim
     public function changeStatus(Request $request, $id)
     {
         $request->validate([
@@ -289,7 +288,7 @@ class MovieController extends Controller
         ]);
     }
 
-    
+
     // Thống kê phim
     public function statistics()
     {

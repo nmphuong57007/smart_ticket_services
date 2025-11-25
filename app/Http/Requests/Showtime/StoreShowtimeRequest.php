@@ -19,7 +19,7 @@ class StoreShowtimeRequest extends FormRequest
             'room_id'  => 'required|integer|exists:rooms,id',
 
 
-            
+
             'show_date' => [
                 'required',
                 'date_format:Y-m-d',
@@ -39,7 +39,7 @@ class StoreShowtimeRequest extends FormRequest
 
             'price' => 'nullable|numeric|min:0|max:1000000',
 
-            'format' => 'nullable|string|max:50',
+
 
             'language_type' => 'nullable|in:sub,dub,narrated',
         ];
@@ -72,9 +72,7 @@ class StoreShowtimeRequest extends FormRequest
             'price.min'     => 'Giá vé không được nhỏ hơn 0.',
             'price.max'     => 'Giá vé quá lớn.',
 
-            // format
-            'format.string' => 'Định dạng phải là chuỗi ký tự.',
-            'format.max'    => 'Định dạng phim không được quá 50 ký tự.',
+           
 
             // language_type
             'language_type.in' => 'Kiểu ngôn ngữ không hợp lệ (chỉ chấp nhận: sub, dub, narrated).',
