@@ -20,7 +20,7 @@ class UpdateShowtimeRequest extends FormRequest
             'movie_id'  => 'sometimes|integer|exists:movies,id',
             'room_id'   => 'sometimes|integer|exists:rooms,id',
 
-            
+
 
             'show_date' => [
                 'sometimes',
@@ -39,7 +39,7 @@ class UpdateShowtimeRequest extends FormRequest
             ],
 
             'price'         => 'sometimes|numeric|min:0|max:1000000',
-            'format'        => 'sometimes|string|max:50',
+            
             'language_type' => 'sometimes|in:sub,dub,narrated',
         ];
     }

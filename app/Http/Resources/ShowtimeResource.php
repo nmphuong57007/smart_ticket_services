@@ -28,6 +28,7 @@ class ShowtimeResource extends JsonResource
                 'poster'       => $this->formatPoster($this->movie->poster),
                 'duration'     => $this->movie->duration,
                 'release_date' => $this->movie->release_date,
+                'language'     => $this->movie->language,
             ] : null,
 
             // ROOM

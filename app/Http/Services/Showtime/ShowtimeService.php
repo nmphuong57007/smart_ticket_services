@@ -26,7 +26,7 @@ class ShowtimeService
     public function getShowtimes(array $filters = [])
     {
         return Showtime::with([
-            'movie:id,title,poster,release_date,duration',
+            'movie:id,title,poster,release_date,duration,language,format',
             'room:id,name',
         ])
             ->when($filters['room_id'] ?? null, fn($q, $v) => $q->where('room_id', $v))
@@ -153,13 +153,14 @@ class ShowtimeService
         // Tính giá theo weekday/weekend
         $data['price'] = $this->calculatePrice($data['show_date']);
 
+        // Tự động lấy format từ phim
+        $data['format'] = $movie->format;
+
         // Tạo suất chiếu
         $showtime = Showtime::create($data);
 
-        if (!$isSeeding) {
-            app(RoomService::class)
-                ->createSeatsForShowtime($showtime);
-        }
+        // LUÔN tạo ghế cho suất chiếu
+        app(RoomService::class)->createSeatsForShowtime($showtime);
 
         return $showtime;
     }
@@ -184,10 +185,18 @@ class ShowtimeService
             ]));
         }
 
+        // Nếu đổi ngày → tính lại giá
         if (isset($data['show_date'])) {
             $data['price'] = $this->calculatePrice($data['show_date']);
         }
 
+        // Nếu đổi phim → cập nhật format theo phim mới
+        if (isset($data['movie_id'])) {
+            $movie = Movie::findOrFail($data['movie_id']);
+            $data['format'] = $movie->format;
+        }
+
+        // Update cuối cùng
         $showtime->update($data);
 
         return $showtime;
