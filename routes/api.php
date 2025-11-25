@@ -17,9 +17,11 @@ use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\GenreController;
+use App\Http\Controllers\ContentPostController;
 
 
 use App\Http\Controllers\DiscountController;
+
 
 Route::get(
     '/health-check',
@@ -78,7 +80,7 @@ Route::prefix('movies')->group(function () {
     Route::get('/list', [MovieController::class, 'index']); // Lấy danh sách phim (filter, paginate)
     Route::get('/{id}', [MovieController::class, 'show'])->whereNumber('id');  // Lấy chi tiết phim
     Route::get('/{id}/showtimes', [MovieController::class, 'showtimesByMovie'])
-    ->whereNumber('id'); // Lấy lịch chiếu theo phim
+        ->whereNumber('id'); // Lấy lịch chiếu theo phim
 
     // Staff
     Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
@@ -114,12 +116,13 @@ Route::prefix('showtimes')->group(function () {
 
     // PUBLIC
     Route::get('/', [ShowtimeController::class, 'index']); // Lấy danh sách suất chiếu với filter & pagination
+    Route::get('/{id}', [ShowtimeController::class, 'show'])->whereNumber('id'); // Lấy chi tiết suất chiếu
     Route::get('/rooms', [ShowtimeController::class, 'rooms']); // Lấy các phòng có suất chiếu
     Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates'])->whereNumber('roomId'); // Lấy danh sách ngày chiếu theo phòng
     Route::get('/statistics', [ShowtimeController::class, 'statistics']); // Thống kê lịch chiếu
     Route::get('/statistics/by-date', [ShowtimeController::class, 'statisticsByDate']); // Thống kê lịch chiếu theo ngày
     Route::get('/{id}/seats', [ShowtimeController::class, 'seats'])
-    ->whereNumber('id'); // Lấy sơ đồ ghế của suất chiếu
+        ->whereNumber('id'); // Lấy sơ đồ ghế của suất chiếu
 
     // ADMIN ONLY
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
@@ -170,11 +173,7 @@ Route::prefix('combos')->group(function () {
 // Public route xem thông tin vé trước khi đặt
 Route::get('tickets/preview', [TicketController::class, 'preview']);
 
-// Content routes
-Route::prefix('contents')->group(function () {
-    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
-    Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
-});
+
 
 // Room routes – CRUD đầy đủ cho mô hình 1 rạp duy nhất
 Route::prefix('rooms')->group(function () {
@@ -213,5 +212,20 @@ Route::prefix('seats')->group(function () {
     // Chỉ admin: đổi trạng thái seat
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
+    });
+});
+
+// --- ContentPost routes ---
+// PUBLIC
+Route::prefix('content-posts')->group(function () {
+    Route::get('/', [ContentPostController::class, 'index']); // lấy danh sách (public)
+    Route::get('/{id}', [ContentPostController::class, 'show'])->whereNumber('id'); // chi tiết (public)
+});
+// ADMIN ONLY – CRUD đầy đủ
+Route::middleware(['api.auth', 'role:admin'])->group(function () {
+    Route::prefix('content-posts')->group(function () {
+        Route::post('/', [ContentPostController::class, 'store']); // tạo mới (admin)
+        Route::put('/{id}', [ContentPostController::class, 'update'])->whereNumber('id'); // cập nhật (admin)
+        Route::delete('/{id}', [ContentPostController::class, 'destroy'])->whereNumber('id'); // xóa (admin)
     });
 });
