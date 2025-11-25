@@ -116,6 +116,7 @@ Route::prefix('showtimes')->group(function () {
 
     // PUBLIC
     Route::get('/', [ShowtimeController::class, 'index']); // Lấy danh sách suất chiếu với filter & pagination
+    Route::get('/{id}', [ShowtimeController::class, 'show'])->whereNumber('id'); // Lấy chi tiết suất chiếu
     Route::get('/rooms', [ShowtimeController::class, 'rooms']); // Lấy các phòng có suất chiếu
     Route::get('/dates/{roomId}', [ShowtimeController::class, 'showDates'])->whereNumber('roomId'); // Lấy danh sách ngày chiếu theo phòng
     Route::get('/statistics', [ShowtimeController::class, 'statistics']); // Thống kê lịch chiếu

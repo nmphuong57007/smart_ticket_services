@@ -9,18 +9,20 @@ class ContentPostSeeder extends Seeder
 {
     public function run(): void
     {
-        ContentPost::factory()->banner()->count(3)->create();
+        $this->command->info('Đang seed dữ liệu Content Posts...');
 
-        ContentPost::factory()->count(5)->create(); // news mặc định
+        // Banner
+        ContentPost::factory()->banner()->count(4)->create();
 
+        // News
+        ContentPost::factory()->news()->count(6)->create();
+
+        // Promotion
         ContentPost::factory()->promotion()->count(5)->create();
 
-        ContentPost::factory()
-            ->count(10)
-            ->state(function () {
-                return ['type' => fake()->randomElement(['banner', 'news', 'promotion'])];
-            })
-            ->create();
-        $this->command->info('Content Posts seeded thành công!');
+        // Random
+        ContentPost::factory()->count(10)->create();
+
+        $this->command->info('Seed Content Posts hoàn tất!');
     }
 }

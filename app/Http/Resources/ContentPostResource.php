@@ -7,9 +7,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ContentPostResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     */
+
     public function toArray($request)
     {
         return [
@@ -20,12 +18,15 @@ class ContentPostResource extends JsonResource
             'description'       => $this->description,
             'slug'              => $this->slug,
 
-            // Nếu có ảnh thì trả full URL
+
             'image' => $this->image
-                ? url(Storage::url($this->image))
+                ? (str_starts_with($this->image, 'http')
+                    ? $this->image
+                    : url(Storage::url($this->image)))
                 : null,
 
             'is_published'      => $this->is_published,
+            
             'published_at' => optional($this->published_at)
                 ->timezone('Asia/Ho_Chi_Minh')
                 ->format('Y-m-d H:i:s'),

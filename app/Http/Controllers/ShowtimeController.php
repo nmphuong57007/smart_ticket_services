@@ -64,6 +64,26 @@ class ShowtimeController extends Controller
         ]);
     }
 
+    // Chi tiết suất chiếu
+    public function show(int $id)
+    {
+        $showtime = $this->service->getShowtimeById($id);
+
+        if (!$showtime) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy suất chiếu'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lấy chi tiết suất chiếu thành công',
+            'data' => new ShowtimeResource($showtime)
+        ]);
+    }
+
+
     /**
      * Decode error service throw
      */

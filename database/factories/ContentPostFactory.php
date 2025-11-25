@@ -14,76 +14,95 @@ class ContentPostFactory extends Factory
     {
         $faker = fake('vi_VN');
 
-        // default (news)
-        $title = $faker->randomElement([
-            "Phim mới ra mắt tuần này",
-            "Top 5 phim đang dẫn đầu phòng vé",
-            "Tin nóng: Bom tấn sắp đổ bộ SmartTicket",
-        ]);
+        // Lấy type từ state(), nếu không có → random
+        $type = $this->attributes['type']
+            ?? fake()->randomElement(['banner', 'news', 'promotion']);
+
+        // Title theo type
+        $titles = [
+            'banner' => [
+                "Khai trương rạp SmartTicket",
+                "Giảm giá mùa lễ hội",
+                "Ưu đãi cực lớn trong tháng này",
+                "Chào mừng bạn đến SmartTicket!",
+            ],
+            'news' => [
+                "Phim mới ra mắt tuần này",
+                "Top 5 phim hot nhất phòng vé",
+                "Tin nóng: Bom tấn sắp đổ bộ SmartTicket",
+                "Hậu trường làm phim mới cực thú vị",
+            ],
+            'promotion' => [
+                "Black Friday giảm giá 70%",
+                "Mua 1 tặng 1 vé xem phim",
+                "Ưu đãi siêu hot cho thành viên mới",
+                "Voucher giảm 50k cho mọi suất chiếu",
+            ],
+        ];
+
+        // Ảnh theo type
+        $images = [
+            'banner' => [
+                'https://placehold.co/1200x450?text=SmartTicket+Banner',
+                'https://placehold.co/1200x450?text=Sale+Big+Event',
+                'https://placehold.co/1200x450?text=Welcome+To+Cinema',
+            ],
+            'news' => [
+                'https://placehold.co/600x400?text=Movie+News',
+                'https://placehold.co/600x400?text=Hot+Update',
+                'https://placehold.co/600x400?text=Cinema+News',
+            ],
+            'promotion' => [
+                'https://placehold.co/600x400?text=Promotion',
+                'https://placehold.co/600x400?text=Discount+70%',
+                'https://placehold.co/600x400?text=Sale+Movie+Tickets',
+            ],
+        ];
+
+        // Random title + image
+        $title = $faker->randomElement($titles[$type]);
+        $image = $faker->randomElement($images[$type]);
+
+        // Thời gian thực tế đẹp
+        $created = now()->subDays(rand(1, 30))->setTime(rand(8, 20), rand(0, 59));
+        $updated = $created->copy()->addHours(rand(1, 24));
+        $published = $created->copy()->addHours(rand(0, 6));
 
         return [
-            'type' => 'news',
+            'type' => $type,
             'title' => $title,
-            'short_description' => $faker->sentence(10),
-            'description' => $faker->paragraph(6),
-            'slug' => Str::slug($title) . '-' . $faker->unique()->numberBetween(100, 999),
-            'image' => 'https://image.tmdb.org/t/p/w780/kqjL17yufvn9OVLyXYpvtyrFfak.jpg',
+            'short_description' => $faker->sentence(12),
+            'description' => $faker->paragraph(8),
+
+            'slug' => Str::slug($title) . '-' . fake()->unique()->numberBetween(1000, 9999),
+
+            'image' => $image,
 
             'is_published' => true,
-            'published_at' => now(),
+            'published_at' => $published,
 
             'created_by' => 1,
             'created_by_name' => 'System Administrator',
+
+            'created_at' => $created,
+            'updated_at' => $updated,
         ];
     }
 
-    /**
-     * STATE BANNER
-     */
+    // STATES
+
     public function banner()
     {
-        return $this->state(function () {
-            $title = fake('vi_VN')->randomElement([
-                "Khai trương rạp SmartTicket",
-                "Giảm giá mùa lễ hội",
-                "Ưu đãi lớn trong tháng"
-            ]);
-
-            return [
-                'type' => 'banner',
-                'title' => $title,
-                'slug' => Str::slug($title) . '-' . rand(100,999),
-                'image' => fake()->randomElement([
-                    'https://image.tmdb.org/t/p/original/fiVW06jE7z9YnO4trhaMEdclSiC.jpg',
-                    'https://image.tmdb.org/t/p/original/8YFL5QQVPy3AgrEQxNYVSgiPEbe.jpg',
-                    'https://image.tmdb.org/t/p/original/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg',
-                ]),
-            ];
-        });
+        return $this->state(fn() => ['type' => 'banner']);
     }
 
-    /**
-     * STATE PROMOTION
-     */
+    public function news()
+    {
+        return $this->state(fn() => ['type' => 'news']);
+    }
+
     public function promotion()
     {
-        return $this->state(function () {
-            $title = fake('vi_VN')->randomElement([
-                "Black Friday giảm giá 70%",
-                "Mua 1 tặng 1 vé xem phim",
-                "Ưu đãi khủng dành cho thành viên",
-            ]);
-
-            return [
-                'type' => 'promotion',
-                'title' => $title,
-                'slug' => Str::slug($title) . '-' . rand(100,999),
-                'image' => fake()->randomElement([
-                    'https://image.tmdb.org/t/p/w500/1AhR8Vg1mmSRITxHSc3CmK8A9qe.jpg',
-                    'https://image.tmdb.org/t/p/w500/fRrpOILyXuWaWLmqF7kXeMVwITQ.jpg',
-                    'https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg',
-                ]),
-            ];
-        });
+        return $this->state(fn() => ['type' => 'promotion']);
     }
 }
