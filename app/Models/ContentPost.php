@@ -5,30 +5,32 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class PromotionPost extends Model
+
+class ContentPost extends Model
 {
     use HasFactory;
 
-    protected $table = 'promotion_posts';
-
     protected $fillable = [
+        'type',
         'title',
+        'short_description',
         'description',
         'slug',
-        'image_url',
-
-        'published_at',
+        'image',
         'is_published',
+        'published_at',
         'created_by',
         'created_by_name'
-
     ];
+
+    protected $table = 'content_posts';
 
     protected $casts = [
-        'published_at' => 'datetime',
         'is_published' => 'boolean',
+        'published_at' => 'datetime',
     ];
 
+    // Quan hệ với user tạo bài
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

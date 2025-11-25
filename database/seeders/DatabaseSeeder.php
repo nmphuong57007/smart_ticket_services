@@ -26,13 +26,13 @@ class DatabaseSeeder extends Seeder
             UsersSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
-            ContentsSeeder::class,
-            PromotionPostSeeder::class,
+            ContentPostSeeder::class,
+
         ]);
 
         // Bật lại kiểm tra khóa ngoại
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
-        $this->command->info("✅ Database đã được seed đầy đủ thành công!");
+        $this->command->info("Database đã được seed đầy đủ thành công!");
     }
 }

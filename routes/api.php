@@ -17,10 +17,11 @@ use App\Http\Controllers\ComboController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\GenreController;
+use App\Http\Controllers\ContentPostController;
 
 
 use App\Http\Controllers\DiscountController;
-use App\Http\Controllers\PromotionPostController;
+
 
 Route::get(
     '/health-check',
@@ -162,11 +163,7 @@ Route::prefix('combos')->group(function () {
 // Public route xem thông tin vé trước khi đặt
 Route::get('tickets/preview', [TicketController::class, 'preview']);
 
-// Content routes
-Route::prefix('contents')->group(function () {
-    Route::get('/',     [App\Http\Controllers\ContentController::class, 'index']); // danh sách public
-    Route::get('/{id}', [App\Http\Controllers\ContentController::class, 'show']); // chi tiết
-});
+
 
 // Room routes – CRUD đầy đủ cho mô hình 1 rạp duy nhất
 Route::prefix('rooms')->group(function () {
@@ -207,23 +204,18 @@ Route::prefix('seats')->group(function () {
         Route::patch('/{id}/status', [SeatController::class, 'changeStatus'])->whereNumber('id');
     });
 });
-// PUBLIC ROUTES
-Route::prefix('promotion-posts')->group(function () {
-    Route::get('/', [PromotionPostController::class, 'index']); // Public
-    Route::get('/{id}', [PromotionPostController::class, 'show']); // Public
-});
 
-// STAFF + ADMIN ROUTES
-Route::middleware(['auth:sanctum', 'role:admin,staff'])->group(function () {
-    Route::prefix('admin/promotion-posts')->group(function () {
-        Route::post('/', [PromotionPostController::class, 'store']);    // Tạo
-        Route::post('/{id}', [PromotionPostController::class, 'update']); // Sửa
-    });
+// --- ContentPost routes ---
+// PUBLIC
+Route::prefix('content-posts')->group(function () {
+    Route::get('/', [ContentPostController::class, 'index']); // lấy danh sách (public)
+    Route::get('/{id}', [ContentPostController::class, 'show'])->whereNumber('id'); // chi tiết (public)
 });
-
-// ADMIN ONLY ROUTES
-Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    Route::prefix('admin/promotion-posts')->group(function () {
-        Route::delete('/{id}', [PromotionPostController::class, 'destroy']); // Xóa
+// ADMIN ONLY – CRUD đầy đủ
+Route::middleware(['api.auth', 'role:admin'])->group(function () {
+    Route::prefix('content-posts')->group(function () {
+        Route::post('/', [ContentPostController::class, 'store']); // tạo mới (admin)
+        Route::put('/{id}', [ContentPostController::class, 'update'])->whereNumber('id'); // cập nhật (admin)
+        Route::delete('/{id}', [ContentPostController::class, 'destroy'])->whereNumber('id'); // xóa (admin)
     });
 });
