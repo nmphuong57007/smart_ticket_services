@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             UsersSeeder::class,
             PointsHistorySeeder::class,
             ComboSeeder::class,
+            PromotionSeeder::class,
             ContentPostSeeder::class,
 
         ]);
