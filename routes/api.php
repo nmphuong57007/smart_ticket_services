@@ -18,9 +18,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\GenreController;
 use App\Http\Controllers\ContentPostController;
-
-
-use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\PromotionController;
 
 
 Route::get(
@@ -143,15 +141,18 @@ Route::prefix('cinema')->group(function () {
     });
 });
 
+// Admin quản lý mã giảm giá
+Route::prefix('promotions')
+    ->middleware(['api.auth', 'role:admin'])
+    ->group(function () {
+        Route::get('/', [PromotionController::class, 'index']); // danh sách với filter + pagination
+        Route::post('/', [PromotionController::class, 'store']); // tạo mã giảm giá mới
+        Route::patch('/{id}', [PromotionController::class, 'update']); // cập nhật mã giảm giá
+        Route::delete('/{id}', [PromotionController::class, 'destroy']); // vô hiệu hoá mã giảm giá
+    });
+// Public apply (không cần login)
+Route::post('/promotions/apply', [PromotionController::class, 'apply']);    // áp dụng mã giảm giá
 
-// Discount routes
-Route::prefix('discounts')->middleware('api.auth')->group(function () {
-    Route::get('/', [DiscountController::class, 'index'])->middleware('role:admin,staff');
-    Route::post('/', [DiscountController::class, 'store'])->middleware('role:admin,staff');
-    Route::put('/{id}', [DiscountController::class, 'update'])->middleware('role:admin,staff');
-    Route::delete('/{id}', [DiscountController::class, 'destroy'])->middleware('role:admin');
-    Route::post('/apply', [DiscountController::class, 'apply'])->middleware('role:admin,staff,customer');
-});
 
 // Public
 Route::prefix('combos')->group(function () {
