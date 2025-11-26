@@ -9,26 +9,27 @@ class MovieStoreRequest extends FormRequest
     public function authorize()
     {
 
-        return $this->user() && in_array($this->user()->role, ['admin', 'staff']);
-
+        return $this->user() && in_array($this->user()->role, ['admin']);
     }
 
     public function rules(): array
     {
         return [
-            'title' => 'required|string|max:255',
-            'poster' => 'nullable|image|max:2048', // jpg/png <= 2MB
-            'trailer' => 'nullable|url',
-            'description' => 'nullable|string',
+            'title'        => 'required|string|max:255',
+            'poster'       => 'nullable|image|max:2048',
+            'trailer'      => 'nullable|url',
+            'description'  => 'nullable|string',
 
-            // Thay vì genre dạng text, dùng genre_ids dạng mảng
-            'genre_ids' => 'nullable|array',
+            'genre_ids'   => 'nullable|array',
             'genre_ids.*' => 'integer|exists:genres,id',
 
-
+            
             'duration' => 'required|integer|min:1',
-            'format' => 'required|string|max:50',
-            'language' => 'required|in:dub,sub,narrated',
+            'format'   => 'required|string|max:50',
+
+            // NGÔN NGỮ PHIM – LƯU FULL LABEL
+            'language' => 'required|string|in:Tiếng Việt,Tiếng Anh,Tiếng Hàn,Tiếng Nhật,Tiếng Trung',
+
             'release_date' => 'required|date',
 
             'end_date' => [
