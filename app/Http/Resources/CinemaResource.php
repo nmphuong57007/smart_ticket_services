@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Storage;
 
 class CinemaResource extends JsonResource
 {
@@ -14,7 +15,11 @@ class CinemaResource extends JsonResource
             'address' => $this->address,
             'phone'   => $this->phone,
             'status'  => $this->status,
-            'image' => $this->image ? asset('storage/' . $this->image) : null,
+              'image' => $this->image
+                ? (str_starts_with($this->image, 'http')
+                    ? $this->image
+                    : url(Storage::url($this->image)))
+                : null,
             'description' => $this->description,
 
             // Luôn load rooms nếu controller gọi with('rooms')
