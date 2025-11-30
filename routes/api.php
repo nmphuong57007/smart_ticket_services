@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
@@ -228,5 +229,17 @@ Route::middleware(['api.auth', 'role:admin'])->group(function () {
         Route::post('/', [ContentPostController::class, 'store']); // tạo mới (admin)
         Route::put('/{id}', [ContentPostController::class, 'update'])->whereNumber('id'); // cập nhật (admin)
         Route::delete('/{id}', [ContentPostController::class, 'destroy'])->whereNumber('id'); // xóa (admin)
+    });
+});
+
+Route::prefix('bookings')->group(function () {
+    Route::middleware('api.auth', 'role:customer')->group(function () {
+        Route::post('/', [BookingController::class, 'store']);     // Tạo booking
+        Route::get('/my', [BookingController::class, 'myBookings']); // Booking user
+        Route::get('/{id}', [BookingController::class, 'show']);  // Chi tiết
+    });
+
+    Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
+        Route::get('/admin', [BookingController::class, 'index']);
     });
 });
