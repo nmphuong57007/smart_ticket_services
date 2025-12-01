@@ -27,6 +27,7 @@ class ContentPostUpdateRequest extends FormRequest
 
             'is_published' => 'sometimes|boolean',
             'published_at' => 'sometimes|nullable|date',
+            'unpublished_at' => 'sometimes|nullable|date_format:Y-m-d H:i:s|after_or_equal:published_at',
         ];
     }
 
