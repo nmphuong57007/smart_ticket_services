@@ -13,16 +13,23 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('booking_id')->nullable();
-            $table->unsignedBigInteger('user_id')->nullable();
-            $table->enum('method', ['momo', 'zalopay', 'vnpay', 'card', 'qr'])->default('momo');
-            $table->decimal('amount', 10, 2)->nullable();
-            $table->enum('status', ['success', 'failed', 'pending', 'refunded'])->default('pending');
-            $table->string('transaction_code', 100)->nullable();
-            $table->timestamp('created_at')->nullable()->useCurrent();
-            
-            $table->index('booking_id');
-            $table->index('user_id');
+            $table->unsignedBigInteger('booking_id');
+            $table->unsignedBigInteger('user_id');
+
+            $table->enum('method', ['vnpay', 'banking', 'momo', 'zalopay', 'card', 'qr']);
+
+            $table->decimal('amount', 12, 2);
+
+            $table->enum('status', ['pending', 'success', 'failed', 'refunded'])->default('pending');
+
+            $table->string('transaction_code')->nullable();   // VNPAY transaction no
+            $table->string('transaction_uuid')->nullable();   // mã hệ thống của bạn
+            $table->string('bank_code')->nullable();          // Mã ngân hàng khách chọn
+            $table->text('pay_url')->nullable();              // Link thanh toán
+
+            $table->timestamp('paid_at')->nullable();
+
+            $table->timestamps();
         });
     }
 

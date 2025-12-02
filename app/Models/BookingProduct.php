@@ -9,6 +9,8 @@ class BookingProduct extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $fillable = [
         'booking_id',
         'product_id',

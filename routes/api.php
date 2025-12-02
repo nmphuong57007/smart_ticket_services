@@ -19,6 +19,7 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\GenreController;
 use App\Http\Controllers\ContentPostController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ProductController;
 
@@ -238,4 +239,12 @@ Route::prefix('bookings')->group(function () {
     Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
         Route::get('/admin', [BookingController::class, 'index']);
     });
+});
+
+Route::prefix('payment')->group(function () {
+    Route::middleware('api.auth', 'role:customer')->group(function () {
+        Route::post('/vnpay/create', [PaymentController::class, 'createVnpay']); // Tạo thanh toán VNPAY
+    });
+
+    Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']); // Callback VNPAY
 });
