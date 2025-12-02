@@ -16,17 +16,39 @@ class ContentPostService
     public function list(array $filters = []): LengthAwarePaginator
     {
         return ContentPost::query()
+
+            // --- AUTO PUBLISH + AUTO HIDE ---
+            ->where(function ($q) use ($filters) {
+
+                // Nếu admin cố tình lọc theo is_published → giữ nguyên behavior cũ
+                if (isset($filters['is_published'])) {
+                    return $q->where('is_published', $filters['is_published']);
+                }
+
+                // PUBLIC MODE (auto-publish & auto-hide)
+                $q->where(function ($q2) {
+                    $now = now();
+
+                    $q2->where('is_published', true) // Admin bật thủ công
+                        ->orWhere(function ($q3) use ($now) {
+                            $q3->whereNotNull('published_at')
+                                ->where('published_at', '<=', $now);
+                        });
+                })
+
+                    // AUTO-HIDE: ẩn bài khi đến hạn unpublished_at
+                    ->where(function ($q4) {
+                        $now = now();
+
+                        $q4->whereNull('unpublished_at')
+                            ->orWhere('unpublished_at', '>=', $now);
+                    });
+            })
+
+            // Filtering khác
             ->when($filters['type'] ?? null, fn($q, $v) => $q->where('type', $v))
-            ->when(
-                $filters['search'] ?? null,
-                fn($q, $v) =>
-                $q->where('title', 'like', "%{$v}%")
-            )
-            ->when(
-                isset($filters['is_published']),
-                fn($q) =>
-                $q->where('is_published', $filters['is_published'])
-            )
+            ->when($filters['search'] ?? null, fn($q, $v) => $q->where('title', 'like', "%{$v}%"))
+
             ->orderBy('published_at', 'desc')
             ->paginate($filters['per_page'] ?? 10);
     }

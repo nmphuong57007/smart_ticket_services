@@ -19,6 +19,7 @@ class ContentPost extends Model
         'image',
         'is_published',
         'published_at',
+        'unpublished_at',
         'created_by',
         'created_by_name'
     ];
@@ -28,6 +29,7 @@ class ContentPost extends Model
     protected $casts = [
         'is_published' => 'boolean',
         'published_at' => 'datetime',
+        'unpublished_at' => 'datetime',
     ];
 
     // Quan hệ với user tạo bài

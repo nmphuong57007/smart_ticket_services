@@ -80,6 +80,7 @@ class ContentPostFactory extends Factory
 
             'is_published' => true,
             'published_at' => $published,
+            'unpublished_at' => $published->copy()->addDays(rand(2, 10)),
 
             'created_by' => 1,
             'created_by_name' => 'System Administrator',

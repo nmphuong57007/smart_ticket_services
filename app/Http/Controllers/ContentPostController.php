@@ -102,7 +102,7 @@ class ContentPostController extends Controller
             'data' => new ContentPostResource($updated)
         ], Response::HTTP_OK);
     }
-    
+
     // Xóa bài viết — ADMIN
     public function destroy(int $id)
     {

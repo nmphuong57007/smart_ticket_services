@@ -26,10 +26,14 @@ class ContentPostResource extends JsonResource
                 : null,
 
             'is_published'      => $this->is_published,
-            
+
             'published_at' => optional($this->published_at)
                 ->timezone('Asia/Ho_Chi_Minh')
                 ->format('Y-m-d H:i:s'),
+
+            'unpublished_at' => $this->unpublished_at
+                ? $this->unpublished_at->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s')
+                : null,
 
             'created_by'        => $this->created_by,
             'created_by_name'   => $this->created_by_name,
