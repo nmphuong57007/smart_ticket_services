@@ -13,12 +13,13 @@ use App\Http\Controllers\PointsHistoryController;
 
 use App\Http\Controllers\ShowtimeController;
 use App\Http\Controllers\CinemaController;
-use App\Http\Controllers\ComboController;
+
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\SeatController;
 use App\Http\Controllers\GenreController;
 use App\Http\Controllers\ContentPostController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\ProductController;
 
 
 Route::get(
@@ -153,21 +154,16 @@ Route::prefix('promotions')
 // Public apply (không cần login)
 Route::post('/promotions/apply', [PromotionController::class, 'apply']);    // áp dụng mã giảm giá
 
-
-// Public
-Route::prefix('combos')->group(function () {
-    Route::get('/', [ComboController::class, 'index']); // danh sách public
-    Route::get('/{id}', [ComboController::class, 'show']); // chi tiết
-
-    // Staff & Admin
-    Route::middleware(['api.auth', 'role:admin,staff'])->group(function () {
-        Route::post('/create', [ComboController::class, 'store']);
-        Route::post('/update/{id}', [ComboController::class, 'update']);
-    });
-
-    // Admin only
+// Product routes
+Route::prefix('products')->group(function () {
+    // PUBLIC
+    Route::get('/', [ProductController::class, 'index']); // Danh sách sản phẩm với filter + pagination
+    Route::get('/{id}', [ProductController::class, 'show']); // Chi tiết sản phẩm
+    // ADMIN
     Route::middleware(['api.auth', 'role:admin'])->group(function () {
-        Route::delete('/delete/{id}', [ComboController::class, 'destroy']);
+        Route::post('/', [ProductController::class, 'store']); // Tạo sản phẩm mới
+        Route::post('/{id}', [ProductController::class, 'update']); // Cập nhật sản phẩm
+        Route::delete('/{id}', [ProductController::class, 'destroy']); // Xóa sản phẩm
     });
 });
 
