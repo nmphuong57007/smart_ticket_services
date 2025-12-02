@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
             ShowtimesSeeder::class,
             UsersSeeder::class,
             PointsHistorySeeder::class,
-            ComboSeeder::class,
+            ProductSeeder::class,
             PromotionSeeder::class,
             ContentPostSeeder::class,
 

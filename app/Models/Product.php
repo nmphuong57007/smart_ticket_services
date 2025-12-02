@@ -9,7 +9,7 @@ class Product extends Model
 {
     use HasFactory;
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'name',
@@ -17,7 +17,7 @@ class Product extends Model
         'description',
         'image',
         'stock',
-        'type',
+        'type',      // combo | food | drink
         'is_active'
     ];
 
@@ -25,46 +25,5 @@ class Product extends Model
         'price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
-
-    // Scope để lấy combos
-    public function scopeCombos($query)
-    {
-        return $query->where('type', 'combo')->where('is_active', true);
-    }
-
-    // Lọc combo đang hoạt động
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    // Lọc theo tên
-    public function scopeSearch($query, $keyword)
-    {
-        if ($keyword) {
-            $query->where('name', 'like', "%{$keyword}%");
-        }
-        return $query;
-    }
-
-    // Lọc theo khoảng giá
-    public function scopePriceRange($query, $min, $max)
-    {
-        if ($min !== null) {
-            $query->where('price', '>=', $min);
-        }
-        if ($max !== null) {
-            $query->where('price', '<=', $max);
-        }
-        return $query;
-    }
-
-    // Lọc theo tình trạng còn hàng
-    public function scopeInStock($query, $status)
-    {
-        if ($status) {
-            $query->where('stock', '>', 0);
-        }
-        return $query;
-    }
+    
 }
