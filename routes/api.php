@@ -144,17 +144,17 @@ Route::prefix('cinema')->group(function () {
     });
 });
 
-// Admin quản lý mã giảm giá
+// PUBLIC: lấy danh sách mã giảm giá
+Route::get('/promotions', [PromotionController::class, 'index']);
+Route::post('/promotions/apply', [PromotionController::class, 'apply']); // Áp dụng mã giảm giá cho booking
+// ADMIN ONLY
 Route::prefix('promotions')
     ->middleware(['api.auth', 'role:admin'])
     ->group(function () {
-        Route::get('/', [PromotionController::class, 'index']); // danh sách với filter + pagination
-        Route::post('/', [PromotionController::class, 'store']); // tạo mã giảm giá mới
-        Route::patch('/{id}', [PromotionController::class, 'update']); // cập nhật mã giảm giá
-        Route::delete('/{id}', [PromotionController::class, 'destroy']); // vô hiệu hoá mã giảm giá
+        Route::post('/', [PromotionController::class, 'store']);   // tạo
+        Route::patch('/{id}', [PromotionController::class, 'update']); // sửa
+        Route::delete('/{id}', [PromotionController::class, 'destroy']); // xóa
     });
-// Public apply (không cần login)
-Route::post('/promotions/apply', [PromotionController::class, 'apply']);    // áp dụng mã giảm giá
 
 // Product routes
 Route::prefix('products')->group(function () {
