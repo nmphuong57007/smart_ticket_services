@@ -243,6 +243,7 @@ class ShowtimeController extends Controller
                 $seatShowtime = $seats[$code] ?? null;
 
                 $rowData[] = [
+                    'id'              => $seatShowtime->id ?? null,
                     'code'            => $code,
                     'type'            => $physical['type'],
                     'physical_status' => $physical['status'],
