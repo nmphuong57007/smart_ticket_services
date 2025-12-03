@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Payment;
-use App\Http\Services\Payment\PaymentService;
+use App\Services\Payment\PaymentService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -28,7 +28,7 @@ class PaymentController extends Controller
 
         // Tạo URL thanh toán
         $vnp = $this->vnpay->createPaymentUrl($booking);
-
+        return $vnp;
         // Lưu payment vào DB
         $payment = Payment::create([
             'booking_id' => $booking->id,

@@ -61,9 +61,9 @@ class Booking extends Model
         return $this->hasMany(BookingProduct::class);
     }
 
-    // Một booking có thể có nhiều payments (nếu bạn làm thanh toán)
-    // public function payments()
-    // {
-    //     return $this->hasMany(Payment::class);
-    // }
+    // Booking có nhiều payments
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 }
