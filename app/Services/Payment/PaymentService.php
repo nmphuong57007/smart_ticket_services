@@ -35,7 +35,7 @@ class PaymentService
             "vnp_TxnRef" => $vnp_TxnRef,
             "vnp_ExpireDate"=>$expire
         ];
-        
+
         $inputData['vnp_BankCode'] = "INTCARD";
         // return $inputData;
         ksort($inputData);
@@ -73,7 +73,7 @@ class PaymentService
         $vnp_Url = $vnp_Url . "?" . $query;
         // return $vnp_HashSecret;
         if (isset($vnp_HashSecret)) {
-            $vnpSecureHash =   hash_hmac('sha512', $hashdata, $vnp_HashSecret);//  
+            $vnpSecureHash =   hash_hmac('sha512', $hashdata, $vnp_HashSecret);//
             $vnp_Url .= 'vnp_SecureHash=' . $vnpSecureHash;
         }
         // header('Location: ' . $vnp_Url);
