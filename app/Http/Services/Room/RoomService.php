@@ -155,7 +155,8 @@ class RoomService
                         'seat_code'   => $seat['code'],
                         'type'        => $type,
                         'status'      => $seatStatus,   // GHẾ SUẤT CHIẾU
-                        'price'       => $finalPrice,
+                        'price'       => (int) $finalPrice,
+
                     ]);
                 }
             }
