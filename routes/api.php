@@ -233,21 +233,23 @@ Route::middleware(['api.auth', 'role:admin'])->group(function () {
 Route::prefix('bookings')->group(function () {
 
     // CUSTOMER – tạo đơn và xem đơn của họ
-    Route::middleware(['api.auth', 'role:customer'])->group(function () {   
+    Route::middleware(['api.auth', 'role:customer'])->group(function () {
         Route::post('/', [BookingController::class, 'store']);         // Tạo booking
         Route::get('/my', [BookingController::class, 'myBookings']);   // List booking của user
+
     });
 
-    // CUSTOMER + STAFF + ADMIN – xem chi tiết booking
-    Route::middleware(['api.auth'])->group(function () {
-        Route::get('/{id}', [BookingController::class, 'show']);       // Detail booking
+    // CUSTOMER + STAFF + ADMIN – xem 1 booking
+    Route::middleware(['api.auth', 'role:customer,staff,admin'])->group(function () {
+        Route::get('/{id}', [BookingController::class, 'show']); // Chi tiết booking
     });
 
-    // STAFF + ADMIN – xem ALL booking
+    // STAFF + ADMIN – xem toàn bộ booking
     Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
-        Route::get('/admin/list', [BookingController::class, 'index']); // List booking all
+        Route::get('/admin/list', [BookingController::class, 'index']); // Danh sách toàn bộ đơn
     });
 });
+
 
 // PAYMENT ROUTES
 Route::prefix('payment')->group(function () {

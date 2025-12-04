@@ -34,22 +34,21 @@ class Booking extends Model
         'updated_at'    => 'datetime',
     ];
 
+    // -------------------------
     // Relationships
+    // -------------------------
 
-    // Booking thuộc về user
-    // Booking thuộc về user
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    // Booking thuộc về suất chiếu
     public function showtime()
     {
         return $this->belongsTo(Showtime::class);
     }
 
-    // Booking có nhiều vé
     public function tickets()
     {
         return $this->hasMany(Ticket::class);

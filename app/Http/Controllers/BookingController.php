@@ -52,15 +52,15 @@ class BookingController extends Controller
     }
 
     /**
-     * Chi tiết booking
+     * Chi tiết 1 booking
      */
     public function show(Request $request, $id)
     {
         $booking = Booking::with([
             'user',
-            'payment',
+            'payments',
             'tickets.seat',
-            'bookingProducts.product',
+            'products.product',
             'showtime.movie',
             'showtime.room.cinema'
         ])->find($id);
@@ -72,9 +72,9 @@ class BookingController extends Controller
             ], 404);
         }
 
-        $user = $request->user(); 
+        // CUSTOMER chỉ xem của họ
+        $user = $request->user();
 
-        // CUSTOMER chỉ xem booking của họ
         if ($user->role === 'customer' && $booking->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
@@ -89,7 +89,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Lấy danh sách booking của user
+     * CUSTOMER xem danh sách booking của họ
      */
     public function myBookings()
     {
@@ -97,9 +97,9 @@ class BookingController extends Controller
 
         $bookings = Booking::where('user_id', $userId)
             ->with([
-                'payment',
+                'payments',
                 'tickets.seat',
-                'bookingProducts.product',
+                'products.product',     // ⭐ LUÔN GIỮ NGUYÊN
                 'showtime.movie',
                 'showtime.room.cinema',
             ])
@@ -113,7 +113,7 @@ class BookingController extends Controller
     }
 
     /**
-     * (Admin/Staff) – Danh sách toàn bộ bookings
+     * ADMIN / STAFF xem toàn bộ booking
      */
     public function index(Request $request)
     {
@@ -121,7 +121,7 @@ class BookingController extends Controller
 
         $query = Booking::with([
             'user',
-            'payment',
+            'payments',
             'showtime.movie',
             'showtime.room.cinema'
         ]);

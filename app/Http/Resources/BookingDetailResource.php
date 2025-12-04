@@ -8,23 +8,27 @@ class BookingDetailResource extends JsonResource
 {
     public function toArray($request)
     {
+        // Lấy payment mới nhất (vì booking->payments là quan hệ hasMany)
+        $payment = $this->payments->sortByDesc('id')->first();
+
         return [
-            //  THÔNG TIN ĐƠN HÀNG 
+            // THÔNG TIN ĐƠN HÀNG
+            'id'               => $this->id,
             'booking_code'     => $this->booking_code,
             'payment_status'   => $this->payment_status,
-            'transaction_code' => $this->payment->transaction_code ?? null,
-            'payment_method'   => $this->payment->method ?? null,
+            'transaction_code' => $payment->transaction_code ?? null,
+            'payment_method'   => $payment->method ?? null,
             'final_amount'     => $this->final_amount,
             'created_at'       => $this->created_at?->format('Y-m-d H:i'),
 
-            //  THÔNG TIN KHÁCH HÀNG ----------
+            // KHÁCH HÀNG
             'user' => [
                 'fullname' => $this->user->fullname ?? null,
                 'email'    => $this->user->email ?? null,
                 'phone'    => $this->user->phone ?? null,
             ],
 
-            //  THÔNG TIN PHIM 
+            // PHIM
             'movie' => [
                 'id'       => $this->showtime->movie->id ?? null,
                 'title'    => $this->showtime->movie->title ?? null,
@@ -32,25 +36,26 @@ class BookingDetailResource extends JsonResource
                 'poster'   => $this->showtime->movie->poster ?? null,
             ],
 
-            //  THÔNG TIN SUẤT CHIẾU 
+            // SUẤT CHIẾU
             'showtime' => [
-                'id'       => $this->showtime->id ?? null,
-                'time'     => $this->showtime->show_time ?? null,
-                'type'     => $this->showtime->type ?? null,
+                'id'   => $this->showtime->id ?? null,
+                'time' => $this->showtime->show_time ?? null,
+                'type' => $this->showtime->type ?? null,
             ],
 
-            //  RẠP & PHÒNG 
+            // RẠP
             'cinema' => [
                 'id'   => $this->showtime->room->cinema->id ?? null,
                 'name' => $this->showtime->room->cinema->name ?? null,
             ],
 
+            // PHÒNG
             'room' => [
                 'id'   => $this->showtime->room->id ?? null,
                 'name' => $this->showtime->room->name ?? null,
             ],
 
-            //  GHẾ 
+            // GHẾ
             'seats' => $this->tickets->map(function ($ticket) {
                 return [
                     'seat_code' => $ticket->seat->seat_code ?? null,
@@ -58,8 +63,8 @@ class BookingDetailResource extends JsonResource
                 ];
             }),
 
-            // --------- SẢN PHẨM MUA KÈM 
-            'products' => $this->bookingProducts->map(function ($item) {
+            // SẢN PHẨM KÈM THEO
+            'products' => $this->products->map(function ($item) {
                 return [
                     'name'     => $item->product->name ?? null,
                     'quantity' => $item->quantity ?? 0,
