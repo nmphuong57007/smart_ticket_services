@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BookingRequest;
 use App\Http\Services\Booking\BookingService;
 use App\Models\Booking;
+use App\Http\Resources\BookingListResource;
+use App\Http\Resources\BookingDetailResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Exception;
@@ -38,9 +40,8 @@ class BookingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Đặt vé thành công',
-                'data' => $booking
+                'data' => new BookingDetailResource($booking)
             ], 201);
-
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
@@ -51,15 +52,17 @@ class BookingController extends Controller
     }
 
     /**
-     * Chi tiết booking (dùng để xem vé)
+     * Chi tiết booking
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $booking = Booking::with([
+            'user',
+            'payment',
             'tickets.seat',
-            'products.product',
+            'bookingProducts.product',
             'showtime.movie',
-            'showtime.room',
+            'showtime.room.cinema'
         ])->find($id);
 
         if (!$booking) {
@@ -69,9 +72,19 @@ class BookingController extends Controller
             ], 404);
         }
 
+        $user = $request->user(); 
+
+        // CUSTOMER chỉ xem booking của họ
+        if ($user->role === 'customer' && $booking->user_id !== $user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn không có quyền truy cập booking này',
+            ], 403);
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $booking
+            'data' => new BookingDetailResource($booking)
         ]);
     }
 
@@ -84,35 +97,44 @@ class BookingController extends Controller
 
         $bookings = Booking::where('user_id', $userId)
             ->with([
+                'payment',
                 'tickets.seat',
+                'bookingProducts.product',
                 'showtime.movie',
-                'showtime.room'
+                'showtime.room.cinema',
             ])
             ->orderBy('id', 'desc')
             ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $bookings
+            'data' => BookingDetailResource::collection($bookings)
         ]);
     }
 
     /**
-     * (Admin/Staff) – Lấy danh sách toàn bộ bookings
+     * (Admin/Staff) – Danh sách toàn bộ bookings
      */
     public function index(Request $request)
     {
         $status = $request->query('status');
 
-        $query = Booking::with(['user', 'showtime.movie', 'showtime.room']);
+        $query = Booking::with([
+            'user',
+            'payment',
+            'showtime.movie',
+            'showtime.room.cinema'
+        ]);
 
         if ($status) {
             $query->where('payment_status', $status);
         }
 
+        $bookings = $query->orderBy('id', 'desc')->paginate(15);
+
         return response()->json([
             'success' => true,
-            'data' => $query->orderBy('id', 'desc')->paginate(15)
+            'data' => BookingListResource::collection($bookings)
         ]);
     }
 }

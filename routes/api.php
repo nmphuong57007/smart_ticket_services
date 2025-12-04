@@ -229,22 +229,33 @@ Route::middleware(['api.auth', 'role:admin'])->group(function () {
     });
 });
 
+// BOOKING ROUTES
 Route::prefix('bookings')->group(function () {
-    Route::middleware('api.auth', 'role:customer')->group(function () {
-        Route::post('/', [BookingController::class, 'store']);     // Tạo booking
-        Route::get('/my', [BookingController::class, 'myBookings']); // Booking user
-        Route::get('/{id}', [BookingController::class, 'show']);  // Chi tiết
+
+    // CUSTOMER – tạo đơn và xem đơn của họ
+    Route::middleware(['api.auth', 'role:customer,admin'])->group(function () {
+        Route::post('/', [BookingController::class, 'store']);         // Tạo booking
+        Route::get('/my', [BookingController::class, 'myBookings']);   // List booking của user
     });
 
+    // CUSTOMER + STAFF + ADMIN – xem chi tiết booking
+    Route::middleware(['api.auth'])->group(function () {
+        Route::get('/{id}', [BookingController::class, 'show']);       // Detail booking
+    });
+
+    // STAFF + ADMIN – xem ALL booking
     Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
-        Route::get('/admin', [BookingController::class, 'index']);
+        Route::get('/admin/list', [BookingController::class, 'index']); // List booking all
     });
 });
 
+// PAYMENT ROUTES
 Route::prefix('payment')->group(function () {
-    Route::middleware('api.auth', 'role:customer')->group(function () {
-        Route::post('/vnpay/create', [PaymentController::class, 'createVnpay']); // Tạo thanh toán VNPAY
-    });
 
-    Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']); // Callback VNPAY
+    // CUSTOMER – tạo request thanh toán VNPay
+    Route::middleware(['api.auth', 'role:customer'])->group(function () {
+        Route::post('/vnpay/create', [PaymentController::class, 'createVnpay']);
+    });
+    // VNPAY CALLBACK (PUBLIC)
+    Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']);
 });

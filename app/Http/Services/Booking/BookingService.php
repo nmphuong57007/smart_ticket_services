@@ -104,6 +104,8 @@ class BookingService
                 'discount'       => $discountAmount,
                 'final_amount'   => $finalAmount,
                 'payment_status' => Booking::STATUS_PENDING,
+                'booking_code'   => 'BK' . time() . rand(100, 999),
+
             ]);
 
             //---------------------------------------------------
@@ -138,7 +140,7 @@ class BookingService
             //---------------------------------------------------
             // 8. RETURN booking đầy đủ cho FE
             //---------------------------------------------------
-            return $booking->load(['tickets.seat', 'products.product']);
+            return $booking->load(['tickets.seat', 'bookingProducts.product']);
         });
     }
 }

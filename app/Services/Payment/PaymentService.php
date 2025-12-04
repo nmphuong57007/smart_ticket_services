@@ -14,7 +14,7 @@ class PaymentService
         $vnp_IpAddr = $_SERVER['REMOTE_ADDR'];
         $vnp_Locale = "en-US";
         $startTime = date("YmdHis");
-        $expire = date('YmdHis',strtotime('+15 minutes',strtotime($startTime)));
+        $expire = date('YmdHis', strtotime('+15 minutes', strtotime($startTime)));
 
         $vnp_TxnRef = uniqid();
         $vnp_OrderInfo = "Thanh toan don hang " . $booking->id;
@@ -33,7 +33,7 @@ class PaymentService
             "vnp_OrderType" => "other",
             "vnp_ReturnUrl" => $vnp_Returnurl,
             "vnp_TxnRef" => $vnp_TxnRef,
-            "vnp_ExpireDate"=>$expire
+            "vnp_ExpireDate" => $expire
         ];
 
         $inputData['vnp_BankCode'] = "INTCARD";
@@ -73,7 +73,7 @@ class PaymentService
         $vnp_Url = $vnp_Url . "?" . $query;
         // return $vnp_HashSecret;
         if (isset($vnp_HashSecret)) {
-            $vnpSecureHash =   hash_hmac('sha512', $hashdata, $vnp_HashSecret);//
+            $vnpSecureHash =   hash_hmac('sha512', $hashdata, $vnp_HashSecret); //
             $vnp_Url .= 'vnp_SecureHash=' . $vnpSecureHash;
         }
         // header('Location: ' . $vnp_Url);

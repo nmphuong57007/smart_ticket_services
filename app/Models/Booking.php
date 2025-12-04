@@ -23,6 +23,7 @@ class Booking extends Model
         'discount',
         'final_amount',
         'payment_status',
+        'booking_code', 
     ];
 
     protected $casts = [
@@ -33,9 +34,7 @@ class Booking extends Model
         'updated_at'    => 'datetime',
     ];
 
-    //-------------------------
     // Relationships
-    //-------------------------
 
     // Booking thuộc về user
     public function user()
@@ -56,14 +55,14 @@ class Booking extends Model
     }
 
     // Booking có nhiều sản phẩm mua thêm
-    public function products()
+    public function bookingProducts()
     {
         return $this->hasMany(BookingProduct::class);
     }
 
-    // Booking có nhiều payments
-    public function payments()
+    // Booking có 1 payment (vì mỗi đơn chỉ thanh toán 1 lần)
+    public function payment()
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasOne(Payment::class);
     }
 }
