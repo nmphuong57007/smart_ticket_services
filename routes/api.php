@@ -233,7 +233,7 @@ Route::middleware(['api.auth', 'role:admin'])->group(function () {
 Route::prefix('bookings')->group(function () {
 
     // CUSTOMER – tạo đơn và xem đơn của họ
-    Route::middleware(['api.auth', 'role:customer'])->group(function () {
+    Route::middleware(['auth:sanctum', 'role:customer'])->group(function () {
         Route::post('/', [BookingController::class, 'store']);         // Tạo booking
         Route::get('/my', [BookingController::class, 'myBookings']);   // List booking của user
 

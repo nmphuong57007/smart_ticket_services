@@ -108,8 +108,9 @@ class BookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => BookingDetailResource::collection($bookings)
+            'data' => BookingListResource::collection($bookings)
         ]);
+
     }
 
     /**
