@@ -23,7 +23,10 @@ class Booking extends Model
         'discount',
         'final_amount',
         'payment_status',
+        'booking_status',
+        'payment_method',
     ];
+
 
     protected $casts = [
         'total_amount'  => 'float',
