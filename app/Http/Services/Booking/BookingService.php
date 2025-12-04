@@ -140,7 +140,7 @@ class BookingService
             //---------------------------------------------------
             // 8. RETURN booking đầy đủ cho FE
             //---------------------------------------------------
-            return $booking->load(['tickets.seat', 'bookingProducts.product']);
+             return $booking->load(['tickets.seat', 'products.product']);
         });
     }
 }
