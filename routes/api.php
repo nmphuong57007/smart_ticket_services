@@ -23,6 +23,8 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ProductController;
 
+use App\Http\Controllers\Admin\AdminBookingController;
+
 
 Route::get(
     '/health-check',
@@ -236,9 +238,9 @@ Route::prefix('bookings')->group(function () {
         Route::get('/{id}', [BookingController::class, 'show']);  // Chi tiết
     });
 
-    Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
-        Route::get('/admin', [BookingController::class, 'index']);
-    });
+    // Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
+    //     Route::get('/admin', [BookingController::class, 'index']); // Danh sách booking (admin/staff)
+    // });
 });
 
 Route::prefix('payment')->group(function () {
@@ -247,4 +249,13 @@ Route::prefix('payment')->group(function () {
     });
 
     Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']); // Callback VNPAY
+});
+
+// ADMIN + STAFF: Quản lý booking
+Route::prefix('admin/bookings')->middleware(['api.auth', 'role:admin,staff'])->group(function () {
+    Route::get('/', [AdminBookingController::class, 'index']);     // Danh sách
+    Route::get('/{id}', [AdminBookingController::class, 'show']);  // Chi tiết
+    Route::put('/{id}', [AdminBookingController::class, 'update']); // Update status
+    Route::patch('/{id}', [AdminBookingController::class, 'update']);
+    Route::post('/{id}/cancel', [AdminBookingController::class, 'cancel']); // Hủy đơn
 });

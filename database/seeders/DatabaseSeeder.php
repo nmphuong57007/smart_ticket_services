@@ -28,7 +28,8 @@ class DatabaseSeeder extends Seeder
             ProductSeeder::class,
             PromotionSeeder::class,
             ContentPostSeeder::class,
-
+            BookingSeeder::class,
+            TicketSeeder::class,
         ]);
 
         // Bật lại kiểm tra khóa ngoại
