@@ -41,7 +41,7 @@ class PaymentController extends Controller
             "vnp_TmnCode"   => $vnp_TmnCode,
             "vnp_Amount"    => $vnp_Amount,
             "vnp_Command"   => "pay",
-            "vnp_CreateDate"=> date('YmdHis'),
+            "vnp_CreateDate" => date('YmdHis'),
             "vnp_CurrCode"  => "VND",
             "vnp_IpAddr"    => $request->ip(),
             "vnp_Locale"    => "vn",
@@ -51,47 +51,45 @@ class PaymentController extends Controller
             "vnp_TxnRef"    => $vnp_TxnRef
         ];
 
-            ksort($inputData);
-            $query = http_build_query($inputData);
-            $vnp_SecureHash = hash_hmac('sha512', $query, $vnp_HashSecret);
-            $vnp_Url .= '?' . $query . '&vnp_SecureHash=' . $vnp_SecureHash;
-            // return $vnp_Url;
-            $payment = Payment::create([
-                'booking_id' => $booking->id,
-                'user_id' => $user->id,
-                'method' => 'vnpay',
-                'amount' => $booking->final_amount,
-                'transaction_uuid' => $vnp_TxnRef,
-                'pay_url' => $vnp_Url,
-                'status' => 'pending'
-            ]);
+        ksort($inputData);
+        $query = http_build_query($inputData);
+        $vnp_SecureHash = hash_hmac('sha512', $query, $vnp_HashSecret);
+        $vnp_Url .= '?' . $query . '&vnp_SecureHash=' . $vnp_SecureHash;
+        // return $vnp_Url;
+        $payment = Payment::create([
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'method' => 'vnpay',
+            'amount' => $booking->final_amount,
+            'transaction_uuid' => $vnp_TxnRef,
+            'pay_url' => $vnp_Url,
+            'status' => 'pending'
+        ]);
 
-    //   ksort($inputData);
-    // $hashData = "";
-    // $query = "";
+        //   ksort($inputData);
+        // $hashData = "";
+        // $query = "";
 
-    // foreach ($inputData as $key => $value) {
-    //     if ($hashData == "") {
-    //         $hashData = urlencode($key) . "=" . urlencode($value);
-    //         $query = urlencode($key) . "=" . urlencode($value);
-    //     } else {
-    //         $hashData .= "&" . urlencode($key) . "=" . urlencode($value);
-    //         $query .= "&" . urlencode($key) . "=" . urlencode($value);
-    //     }
-    // }
+        // foreach ($inputData as $key => $value) {
+        //     if ($hashData == "") {
+        //         $hashData = urlencode($key) . "=" . urlencode($value);
+        //         $query = urlencode($key) . "=" . urlencode($value);
+        //     } else {
+        //         $hashData .= "&" . urlencode($key) . "=" . urlencode($value);
+        //         $query .= "&" . urlencode($key) . "=" . urlencode($value);
+        //     }
+        // }
 
-    // $vnp_SecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+        // $vnp_SecureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
-    // $returnUrl = $vnp_Url . "?" . $query . "&vnp_SecureHash=" . $vnp_SecureHash;
+        // $returnUrl = $vnp_Url . "?" . $query . "&vnp_SecureHash=" . $vnp_SecureHash;
 
-    return $vnp_Url;
-
-
+        return $vnp_Url;
     }
 
 
-        /** Callback từ VNPAY */
-public function vnpayReturn(Request $request)
+    /** Callback từ VNPAY */
+    public function vnpayReturn(Request $request)
     {
         $vnp_SecureHash = $request->vnp_SecureHash;
         $vnp_HashSecret = config('vnpay.vnp_hashsecret');
@@ -122,7 +120,6 @@ public function vnpayReturn(Request $request)
         // ❌ Sai chữ ký → redirect FE báo lỗi
         if ($secureHash !== $vnp_SecureHash) {
             return redirect()->away("http://localhost:5173/check-payment?RspCode=97&Message=InvalidSignature");
-
         }
 
         // Lấy transaction info
@@ -138,17 +135,16 @@ public function vnpayReturn(Request $request)
         // ✔ Thành công
         if ($responseCode == '00') {
             $payment->update([
-                    'status' => 'success',
-                    'paid_at' => now(),
-                    'transaction_code' => $request->vnp_TransactionNo,
-                    'bank_code' => $request->vnp_BankCode
-                ]);
+                'status' => 'success',
+                'paid_at' => now(),
+                'transaction_code' => $request->vnp_TransactionNo,
+                'bank_code' => $request->vnp_BankCode
+            ]);
 
-                // cập nhật booking
-                $payment->booking->update(['payment_status' => 'paid']);
+            // cập nhật booking
+            $payment->booking->update(['payment_status' => 'paid']);
 
             return redirect()->away("http://localhost:5173/check-payment?RspCode=00&Order={$txnRef}");
-
         }
 
         $payment->update([
@@ -157,7 +153,5 @@ public function vnpayReturn(Request $request)
 
         // ❌ Thất bại
         return redirect()->away("http://localhost:5173/check-payment?RspCode={$responseCode}&Order={$txnRef}");
-
     }
-
 }
