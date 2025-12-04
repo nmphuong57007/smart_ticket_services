@@ -252,7 +252,7 @@ Route::prefix('payment')->group(function () {
 });
 
 // ADMIN + STAFF: Quản lý booking
-Route::prefix('admin/bookings')->middleware(['api.auth', 'role:admin,staff'])->group(function () {
+Route::prefix('admin/bookings')->middleware(['api.auth', 'role:admin'])->group(function () {
     Route::get('/', [AdminBookingController::class, 'index']);     // Danh sách
     Route::get('/{id}', [AdminBookingController::class, 'show']);  // Chi tiết
     Route::put('/{id}', [AdminBookingController::class, 'update']); // Update status
