@@ -18,9 +18,7 @@ class PromotionController extends Controller
         $this->service = $service;
     }
 
-    /**
-     * Danh sách mã giảm giá có filter + pagination
-     */
+    // Lấy danh sách mã giảm giá
     public function index(Request $request)
     {
         $promotions = $this->service->getList($request->all());
@@ -37,9 +35,7 @@ class PromotionController extends Controller
         ]);
     }
 
-    /**
-     * Tạo mã giảm giá mới
-     */
+    // Tạo mã giảm giá mới
     public function store(StorePromotionRequest $request)
     {
         $promotion = $this->service->create($request->validated());
@@ -51,9 +47,7 @@ class PromotionController extends Controller
         ], 201);
     }
 
-    /**
-     * Cập nhật mã giảm giá
-     */
+    // Cập nhật mã giảm giá
     public function update(UpdatePromotionRequest $request, $id)
     {
         $promotion = Promotion::findOrFail($id);
@@ -67,32 +61,38 @@ class PromotionController extends Controller
         ]);
     }
 
-    /**
-     * Vô hiệu hoá (expire) mã giảm giá
-     */
+    // Admin vô hiệu hóa mã giảm giá (disabled)
     public function destroy($id)
     {
         $promotion = Promotion::findOrFail($id);
+
+        // Gọi service để set status = disabled
         $this->service->disable($promotion);
 
         return response()->json([
             'success' => true,
-            'message' => 'Mã giảm giá đã được vô hiệu hóa.',
+            'message' => 'Mã giảm giá đã bị vô hiệu hóa.',
         ]);
     }
 
-    /**
-     * Áp dụng mã giảm giá (public)
-     */
+    // API áp dụng mã giảm giá (public)
     public function apply(Request $request)
     {
         $request->validate([
-            'code' => 'required|string'
+            'code'        => 'required|string',
+            'movie_id'    => 'required|integer',
+            'total_amount' => 'required|integer|min:0',
         ], [
             'code.required' => 'Vui lòng nhập mã giảm giá.',
+            'movie_id.required' => 'Thiếu movie_id để áp mã theo phim.',
+            'total_amount.required' => 'Thiếu tổng tiền để tính giảm giá.',
         ]);
 
-        $result = $this->service->apply($request->code);
+        $result = $this->service->apply(
+            $request->code,
+            $request->movie_id,
+            $request->total_amount
+        );
 
         return response()->json($result);
     }
