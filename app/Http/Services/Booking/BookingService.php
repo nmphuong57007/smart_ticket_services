@@ -7,7 +7,8 @@ use App\Models\Seat;
 use App\Models\Ticket;
 use App\Models\Product;
 use App\Models\BookingProduct;
-use App\Models\Promotion;
+use App\Models\Showtime;
+use App\Http\Services\Promotion\PromotionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Exception;
@@ -18,12 +19,19 @@ class BookingService
     {
         return DB::transaction(function () use ($data, $userId) {
 
-            $showtimeId = $data['showtime_id'];
-            $seatIds = $data['seats'] ?? [];
-            $products = $data['products'] ?? [];
+            $showtimeId   = $data['showtime_id'];
+            $seatIds      = $data['seats'] ?? [];
+            $products     = $data['products'] ?? [];
             $discountCode = $data['discount_code'] ?? null;
 
-            // 1. Kiểm tra ghế
+            // 1. Lấy suất chiếu -> movie_id (KHÔNG dùng room!)
+            $showtime = Showtime::find($showtimeId);
+            if (!$showtime) {
+                throw new Exception("Suất chiếu không tồn tại.");
+            }
+            $movieId = $showtime->movie_id;
+
+            // 2. Kiểm tra ghế THEO SHOWTIME_ID (đúng nhánh main)
             $seats = Seat::whereIn('id', $seatIds)
                 ->where('showtime_id', $showtimeId)
                 ->lockForUpdate()
@@ -39,10 +47,10 @@ class BookingService
                 }
             }
 
-            // 2. Tính tiền ghế
+            // 3. Tính tiền ghế
             $totalSeatPrice = $seats->sum('price');
 
-            // 3. Tính tiền sản phẩm
+            // 4. Tính tiền sản phẩm
             $totalProductPrice = 0;
 
             foreach ($products as $item) {
@@ -51,42 +59,45 @@ class BookingService
                 $totalProductPrice += $p->price * $item['qty'];
             }
 
-            // 4. Giảm giá
+            // Tổng tiền trước giảm
+            $subTotal = $totalSeatPrice + $totalProductPrice;
+
+            // 5. Áp dụng mã giảm giá (logic mới nhưng KHÔNG ảnh hưởng phần khác)
             $discountAmount = 0;
 
             if (!empty($discountCode)) {
-                $promo = Promotion::where('code', $discountCode)
-                    ->where('status', 'active')
-                    ->where('start_date', '<=', now()->toDateString())
-                    ->where('end_date', '>=', now()->toDateString())
-                    ->first();
 
-                if (!$promo) {
-                    throw new Exception("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
+                $promotionService = new PromotionService();
+
+                $applyResult = $promotionService->apply(
+                    $discountCode,
+                    $movieId,
+                    $subTotal
+                );
+
+                if (!$applyResult['valid']) {
+                    throw new Exception($applyResult['message']);
                 }
 
-                $subTotal = $totalSeatPrice + $totalProductPrice;
-                $discountPercent = $promo->discount_percent;
-                $discountAmount = $subTotal * ($discountPercent / 100);
-
-                $discountAmount = min($discountAmount, $subTotal);
+                $discountAmount = $applyResult['discount_value'];
             }
 
-            // 5. Tạo booking
-            $finalAmount = $totalSeatPrice + $totalProductPrice - $discountAmount;
+            // 6. Final
+            $finalAmount = $subTotal - $discountAmount;
 
+            // 7. Tạo booking
             $booking = Booking::create([
                 'user_id'        => $userId,
                 'showtime_id'    => $showtimeId,
                 'discount_code'  => $discountCode,
-                'total_amount'   => $totalSeatPrice + $totalProductPrice,
+                'total_amount'   => $subTotal,
                 'discount'       => $discountAmount,
                 'final_amount'   => $finalAmount,
                 'payment_status' => Booking::STATUS_PENDING,
                 'booking_code'   => 'BK' . time() . rand(100, 999),
             ]);
 
-            // 6. Tạo vé
+            // 8. Tạo vé
             foreach ($seats as $seat) {
                 Ticket::create([
                     'booking_id' => $booking->id,
@@ -97,7 +108,7 @@ class BookingService
                 $seat->update(['status' => 'booked']);
             }
 
-            // 7. Lưu sản phẩm kèm theo
+            // 9. Lưu sản phẩm
             foreach ($products as $item) {
                 BookingProduct::create([
                     'booking_id' => $booking->id,
@@ -106,9 +117,7 @@ class BookingService
                 ]);
             }
 
-
             return $booking->load(['tickets.seat', 'products.product']);
-
         });
     }
 }

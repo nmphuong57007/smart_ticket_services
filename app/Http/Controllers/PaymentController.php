@@ -144,6 +144,31 @@ class PaymentController extends Controller
             // cập nhật booking
             $payment->booking->update(['payment_status' => 'paid']);
 
+            // Tăng used_count cho mã giảm giá (nếu có)
+            $booking = $payment->booking;
+
+            if ($booking->discount_code) {
+
+                $promotion = \App\Models\Promotion::where('code', $booking->discount_code)->first();
+
+                if ($promotion) {
+                    // Chỉ tăng nếu mã vẫn còn hợp lệ và chưa hết lượt
+                    if ($promotion->usage_limit === null || $promotion->used_count < $promotion->usage_limit) {
+
+                        // Tăng lượt
+                        $promotion->increment('used_count');
+
+                        // Nếu đã dùng hết lượt → đổi trạng thái thành expired
+                        if (
+                            $promotion->usage_limit !== null &&
+                            $promotion->used_count >= $promotion->usage_limit
+                        ) {
+                            $promotion->update(['status' => 'expired']);
+                        }
+                    }
+                }
+            }
+
             return redirect()->away("http://localhost:5173/check-payment?RspCode=00&Order={$txnRef}");
         }
 
