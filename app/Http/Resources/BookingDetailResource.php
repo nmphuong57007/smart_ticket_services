@@ -14,6 +14,21 @@ class BookingDetailResource extends JsonResource
         // Nếu booking đã thanh toán -> dùng tickets thay vì booking_seats
         $isPaid = $this->payment_status === 'paid';
 
+        // Xử lý poster phim
+        $poster = $this->showtime->movie->poster ?? null;
+
+        if ($poster) {
+            if (str_starts_with($poster, 'http')) {
+                // Nếu đã là URL tuyệt đối
+                $posterUrl = $poster;
+            } else {
+                // Nếu là file trong storage
+                $posterUrl = url('storage/' . $poster);
+            }
+        } else {
+            $posterUrl = null;
+        }
+
         return [
 
             // ======= THÔNG TIN ĐƠN HÀNG =======
@@ -38,7 +53,7 @@ class BookingDetailResource extends JsonResource
                 'id'       => $this->showtime->movie->id ?? null,
                 'title'    => $this->showtime->movie->title ?? null,
                 'duration' => $this->showtime->movie->duration ?? null,
-                'poster'   => $this->showtime->movie->poster ?? null,
+                'poster'   => $posterUrl, // FIXED
             ],
 
             // ======= SUẤT CHIẾU =======
@@ -77,7 +92,7 @@ class BookingDetailResource extends JsonResource
                         'seat_code'  => $item->seat->seat_code,
                         'type'       => $item->seat->type,
                         'price'      => $item->seat->price,
-                        'qr_code'    => null,  // chưa thanh toán thì không có QR
+                        'qr_code'    => null,
                     ];
                 }),
 

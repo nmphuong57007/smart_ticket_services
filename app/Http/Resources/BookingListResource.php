@@ -19,6 +19,21 @@ class BookingListResource extends JsonResource
             ? $this->tickets->map(fn($t) => $t->seat->seat_code)
             : $this->bookingSeats->map(fn($bs) => $bs->seat->seat_code);
 
+        // Xử lý poster phim
+        $poster = $this->showtime->movie->poster ?? null;
+
+        if ($poster) {
+            // Nếu là URL tuyệt đối → giữ nguyên
+            if (str_starts_with($poster, 'http')) {
+                $posterUrl = $poster;
+            } else {
+                // Nếu là file trong storage → thêm domain
+                $posterUrl = url('storage/' . $poster);
+            }
+        } else {
+            $posterUrl = null;
+        }
+
         return [
             // ===== THÔNG TIN CƠ BẢN =====
             'id'            => $this->id,
@@ -34,7 +49,7 @@ class BookingListResource extends JsonResource
 
             // ===== PHIM =====
             'movie_title'  => $this->showtime->movie->title ?? null,
-            'movie_poster' => $this->showtime->movie->poster ?? null,
+            'movie_poster' => $posterUrl,
 
             // ===== RẠP & PHÒNG =====
             'cinema'    => $this->showtime->room->cinema->name ?? null,
