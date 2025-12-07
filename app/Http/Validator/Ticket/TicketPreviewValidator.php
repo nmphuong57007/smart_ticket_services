@@ -5,6 +5,7 @@ namespace App\Http\Validator\Ticket;
 use App\Http\Validator\BaseValidator;
 use App\Models\Seat;
 use App\Models\Product;
+use App\Models\Promotion;
 use Illuminate\Support\Facades\Validator;
 
 class TicketPreviewValidator extends BaseValidator
@@ -16,10 +17,15 @@ class TicketPreviewValidator extends BaseValidator
     {
         return [
             'showtime_id' => 'required|integer|exists:showtimes,id',
+
             'seat_ids' => 'required|array|min:1',
             'seat_ids.*' => 'integer',
+
             'combo_ids' => 'sometimes|array',
             'combo_ids.*' => 'integer',
+
+            //  Thêm rule cho mã giảm giá
+            'promotion_code' => 'sometimes|string|nullable',
         ];
     }
 
@@ -39,6 +45,8 @@ class TicketPreviewValidator extends BaseValidator
 
             'combo_ids.array' => 'Danh sách combo phải là mảng',
             'combo_ids.*.integer' => 'ID combo phải là số nguyên',
+
+            'promotion_code.string' => 'Mã giảm giá không hợp lệ',
         ];
     }
 
@@ -58,11 +66,13 @@ class TicketPreviewValidator extends BaseValidator
 
         $validated = $validator->validated();
 
-        // Kiểm tra ghế tồn tại + còn trống
+        /**
+         *  Validate ghế
+         */
         if (!empty($validated['seat_ids'])) {
             $seatCount = Seat::whereIn('id', $validated['seat_ids'])
                 ->where('showtime_id', $validated['showtime_id'])
-                ->where('status', 'available') // chỉ lấy ghế còn trống
+                ->where('status', 'available')
                 ->count();
 
             if ($seatCount !== count($validated['seat_ids'])) {
@@ -75,11 +85,13 @@ class TicketPreviewValidator extends BaseValidator
             }
         }
 
-        // Kiểm tra combo tồn tại + active + còn stock
+        /**
+         *  Validate combo
+         */
         if (!empty($validated['combo_ids'])) {
             $comboCount = Product::whereIn('id', $validated['combo_ids'])
                 ->where('is_active', true)
-                ->where('stock', '>', 0) // chỉ lấy combo còn hàng
+                ->where('stock', '>', 0)
                 ->count();
 
             if ($comboCount !== count($validated['combo_ids'])) {
@@ -87,6 +99,26 @@ class TicketPreviewValidator extends BaseValidator
                     'success' => false,
                     'errors' => [
                         'combo_ids' => ['Một số combo không tồn tại, đã ngừng hoạt động hoặc hết hàng'],
+                    ],
+                ];
+            }
+        }
+
+        /**
+         *  Validate mã khuyến mãi (nếu có)
+         */
+        if (!empty($validated['promotion_code'])) {
+            $promotion = Promotion::where('code', $validated['promotion_code'])
+                ->where('status', 'active')
+                ->whereDate('start_date', '<=', now())
+                ->whereDate('end_date', '>=', now())
+                ->first();
+
+            if (!$promotion) {
+                return [
+                    'success' => false,
+                    'errors' => [
+                        'promotion_code' => ['Mã giảm giá không hợp lệ hoặc đã hết hạn'],
                     ],
                 ];
             }

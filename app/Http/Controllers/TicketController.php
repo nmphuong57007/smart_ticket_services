@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Services\Ticket\TicketService;
 use App\Http\Validator\Ticket\TicketPreviewValidator;
+use App\Http\Resources\TicketPreviewResource;
 
 class TicketController extends Controller
 {
@@ -29,9 +30,13 @@ class TicketController extends Controller
         if (isset($input['seat_ids']) && is_string($input['seat_ids'])) {
             $input['seat_ids'] = explode(',', $input['seat_ids']);
         }
+
         if (isset($input['combo_ids']) && is_string($input['combo_ids'])) {
             $input['combo_ids'] = explode(',', $input['combo_ids']);
         }
+
+        // Lấy promotion_code (nếu có)
+        $promotionCode = $input['promotion_code'] ?? null;
 
         // Validate dữ liệu
         $validation = $this->validator->validateWithStatus($input);
@@ -46,11 +51,12 @@ class TicketController extends Controller
 
         $validated = $validation['data'];
 
-        // Lấy thông tin vé từ service
+        // Gọi service preview ticket
         $ticketData = $this->service->previewTicket(
             $validated['showtime_id'],
             $validated['seat_ids'],
-            $validated['combo_ids'] ?? []
+            $validated['combo_ids'] ?? [],
+            $promotionCode
         );
 
         if (!$ticketData['success']) {
@@ -61,11 +67,11 @@ class TicketController extends Controller
             ], 404);
         }
 
-        // Trả về dữ liệu gọn hơn, không lồng data
+        // Dùng Resource để đảm bảo dữ liệu trả về đẹp và chuẩn
         return response()->json([
             'success' => true,
             'message' => 'Thông tin vé trước khi đặt',
-            'data' => $ticketData['data'], // chỉ còn 1 cấp
+            'data' => new TicketPreviewResource($ticketData['data']),
         ]);
     }
 }
