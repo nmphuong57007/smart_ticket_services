@@ -4,17 +4,27 @@ namespace App\Http\Services\Booking;
 
 use App\Models\Booking;
 use App\Models\Seat;
-use App\Models\Ticket;
 use App\Models\Product;
 use App\Models\BookingProduct;
+use App\Models\BookingSeat;
 use App\Models\Showtime;
 use App\Http\Services\Promotion\PromotionService;
+use App\Http\Services\Seat\SeatService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Exception;
 
 class BookingService
 {
+    protected SeatService $seatService;
+
+    public function __construct(SeatService $seatService)
+    {
+        $this->seatService = $seatService;
+    }
+
+    /**
+     * Tạo đơn giữ chỗ – bước 1 của đặt vé
+     */
     public function createBooking(array $data, int $userId)
     {
         return DB::transaction(function () use ($data, $userId) {
@@ -24,68 +34,65 @@ class BookingService
             $products     = $data['products'] ?? [];
             $discountCode = $data['discount_code'] ?? null;
 
-            // 1. Lấy suất chiếu -> movie_id (KHÔNG dùng room!)
+            // 1. Kiểm tra suất chiếu hợp lệ
             $showtime = Showtime::find($showtimeId);
             if (!$showtime) {
                 throw new Exception("Suất chiếu không tồn tại.");
             }
-            $movieId = $showtime->movie_id;
 
-            // 2. Kiểm tra ghế THEO SHOWTIME_ID (đúng nhánh main)
+            // 2. Lấy danh sách ghế và khóa
             $seats = Seat::whereIn('id', $seatIds)
                 ->where('showtime_id', $showtimeId)
                 ->lockForUpdate()
                 ->get();
 
-            if (count($seats) !== count($seatIds)) {
-                throw new Exception("Một hoặc nhiều ghế không hợp lệ.");
+            if ($seats->count() !== count($seatIds)) {
+                throw new Exception("Một hoặc nhiều ghế không tồn tại.");
             }
 
             foreach ($seats as $seat) {
-                if ($seat->status === 'booked') {
-                    throw new Exception("Ghế {$seat->seat_code} đã được đặt trước.");
+                if ($seat->status !== Seat::STATUS_AVAILABLE) {
+                    throw new Exception("Ghế {$seat->seat_code} không khả dụng.");
                 }
             }
 
             // 3. Tính tiền ghế
             $totalSeatPrice = $seats->sum('price');
 
-            // 4. Tính tiền sản phẩm
+            // 4. Tính tiền combo
             $totalProductPrice = 0;
-
             foreach ($products as $item) {
-                $p = Product::find($item['product_id']);
-                if (!$p) throw new Exception("Sản phẩm không tồn tại.");
-                $totalProductPrice += $p->price * $item['qty'];
+                $product = Product::find($item['product_id']);
+                if (!$product) {
+                    throw new Exception("Sản phẩm không tồn tại.");
+                }
+                $totalProductPrice += $product->price * $item['qty'];
             }
 
-            // Tổng tiền trước giảm
             $subTotal = $totalSeatPrice + $totalProductPrice;
 
-            // 5. Áp dụng mã giảm giá (logic mới nhưng KHÔNG ảnh hưởng phần khác)
+            // 5. Áp dụng mã giảm giá
             $discountAmount = 0;
 
-            if (!empty($discountCode)) {
-
+            if ($discountCode) {
                 $promotionService = new PromotionService();
 
-                $applyResult = $promotionService->apply(
+                $result = $promotionService->apply(
                     $discountCode,
-                    $movieId,
+                    $showtime->movie_id,
                     $subTotal
                 );
 
-                if (!$applyResult['valid']) {
-                    throw new Exception($applyResult['message']);
+                if (!$result['valid']) {
+                    throw new Exception($result['message']);
                 }
 
-                $discountAmount = $applyResult['discount_value'];
+                $discountAmount = $result['discount_value'];
             }
 
-            // 6. Final
             $finalAmount = $subTotal - $discountAmount;
 
-            // 7. Tạo booking
+            // 6. Tạo booking (chưa tạo ticket)
             $booking = Booking::create([
                 'user_id'        => $userId,
                 'showtime_id'    => $showtimeId,
@@ -93,31 +100,38 @@ class BookingService
                 'total_amount'   => $subTotal,
                 'discount'       => $discountAmount,
                 'final_amount'   => $finalAmount,
-                'payment_status' => Booking::STATUS_PENDING,
+                'payment_status' => Booking::PAYMENT_PENDING,
+                'booking_status' => Booking::BOOKING_PENDING,
                 'booking_code'   => 'BK' . time() . rand(100, 999),
             ]);
 
-            // 8. Tạo vé
-            foreach ($seats as $seat) {
-                Ticket::create([
-                    'booking_id' => $booking->id,
-                    'seat_id'    => $seat->id,
-                    'qr_code'    => 'TICKET-' . strtoupper(Str::random(10)),
-                ]);
+            // 7. Giữ ghế pending_payment
+            $this->seatService->holdSeats($seatIds);
 
-                $seat->update(['status' => 'booked']);
+            // 8. Lưu danh sách ghế vào bảng booking_seats
+            foreach ($seatIds as $seatId) {
+                BookingSeat::create([
+                    'booking_id' => $booking->id,
+                    'seat_id'    => $seatId,
+                ]);
             }
 
-            // 9. Lưu sản phẩm
+            // 9. Lưu sản phẩm đi kèm
             foreach ($products as $item) {
                 BookingProduct::create([
                     'booking_id' => $booking->id,
                     'product_id' => $item['product_id'],
-                    'quantity'   => $item['qty']
+                    'quantity'   => $item['qty'],
                 ]);
             }
 
-            return $booking->load(['tickets.seat', 'products.product']);
+            // 10. Trả về booking + quan hệ đầy đủ FE cần
+            return $booking->load([
+                'bookingSeats.seat',
+                'products.product',
+                'showtime.movie',
+                'showtime.room.cinema'
+            ]);
         });
     }
 }

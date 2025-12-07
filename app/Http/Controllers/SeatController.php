@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Resources\SeatResource;
 use App\Http\Services\Seat\SeatService;
-use App\Http\Requests\SeatChangeStatusRequest;
 use Symfony\Component\HttpFoundation\Response;
 
 class SeatController extends Controller
@@ -50,29 +49,6 @@ class SeatController extends Controller
             'success' => true,
             'message' => 'Lấy thông tin ghế thành công',
             'data'    => new SeatResource($seat),
-        ]);
-    }
-
-    /**
-     * ĐỔI TRẠNG THÁI GHẾ (available / selected / booked)
-     */
-    public function changeStatus(SeatChangeStatusRequest $request, int $id): JsonResponse
-    {
-        $seat = $this->service->getSeatById($id);
-
-        if (!$seat) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy ghế',
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        $updated = $this->service->changeStatus($seat, $request->validated()['status']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cập nhật trạng thái ghế thành công',
-            'data'    => new SeatResource($updated),
         ]);
     }
 }
