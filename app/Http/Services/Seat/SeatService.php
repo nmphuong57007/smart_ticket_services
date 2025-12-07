@@ -3,36 +3,33 @@
 namespace App\Http\Services\Seat;
 
 use App\Models\Seat;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use App\Models\Seat as SeatModel;
 
 class SeatService
 {
     /**
      * Danh sách ghế theo suất chiếu + filter
      */
-    public function getSeats(array $filters = []): LengthAwarePaginator
+    public function getSeats(array $filters = [])
     {
         $query = Seat::query();
 
-        // Bắt buộc phải có showtime_id
         if (!empty($filters['showtime_id'])) {
             $query->where('showtime_id', $filters['showtime_id']);
         }
 
-        // Lọc theo loại ghế
         if (!empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
-        // Lọc theo trạng thái ghế
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        // Search seat_code
         if (!empty($filters['search'])) {
-            $query->where('seat_code', 'like', '%'.$filters['search'].'%');
+            $query->where('seat_code', 'like', '%' . $filters['search'] . '%');
         }
 
         return $query
@@ -41,7 +38,7 @@ class SeatService
     }
 
     /**
-     * Lấy ghế theo showtime (trả về collection, không phân trang)
+     * Lấy danh sách ghế theo suất chiếu
      */
     public function getSeatsByShowtime(int $showtimeId): Collection
     {
@@ -59,38 +56,40 @@ class SeatService
     }
 
     /**
-     * Tạo ghế — dùng nội bộ khi phát sinh ghế theo suất chiếu
+     * GIỮ GHẾ khi user nhấn nút THANH TOÁN (pending_payment)
      */
-    public function createSeat(array $data): Seat
+    public function holdSeats(array $seatIds): void
     {
-        return Seat::create($data);
+        Seat::whereIn('id', $seatIds)
+            ->where('status', SeatModel::STATUS_AVAILABLE)
+            ->update(['status' => SeatModel::STATUS_PENDING_PAYMENT]);
     }
 
     /**
-     * Cập nhật
+     * TRẢ GHẾ khi user hủy / thanh toán fail / timeout
      */
-    public function updateSeat(Seat $seat, array $data): Seat
+    public function releaseSeats(array $seatIds): void
     {
-        $seat->update($data);
-        return $seat;
+        Seat::whereIn('id', $seatIds)
+            ->where('status', SeatModel::STATUS_PENDING_PAYMENT)
+            ->update(['status' => SeatModel::STATUS_AVAILABLE]);
     }
 
     /**
-     * Xóa ghế
+     * BOOK GHẾ (khi thanh toán thành công)
+     */
+    public function bookSeats(array $seatIds): void
+    {
+        Seat::whereIn('id', $seatIds)->update([
+            'status' => SeatModel::STATUS_BOOKED
+        ]);
+    }
+
+    /**
+     * Xóa 1 ghế
      */
     public function deleteSeat(Seat $seat): bool
     {
         return $seat->delete();
-    }
-
-    /**
-     * Thay đổi trạng thái ghế khi đặt vé
-     * available / selected / booked
-     */
-    public function changeStatus(Seat $seat, string $status): Seat
-    {
-        $seat->status = $status;
-        $seat->save();
-        return $seat;
     }
 }

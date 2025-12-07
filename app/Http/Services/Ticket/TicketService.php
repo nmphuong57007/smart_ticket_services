@@ -8,14 +8,6 @@ use App\Models\Showtime;
 
 class TicketService
 {
-    /**
-     * Preview ticket trước khi đặt
-     *
-     * @param int $showtimeId
-     * @param array $seatIds
-     * @param array $comboIds
-     * @return array
-     */
     public function previewTicket(int $showtimeId, array $seatIds = [], array $comboIds = []): array
     {
         // Lấy thông tin showtime + room + cinema + movie
@@ -30,25 +22,24 @@ class TicketService
             ];
         }
 
-        // Lấy thông tin ghế còn trống
+        // Lấy thông tin ghế KHÔNG FILTER theo status
         $seats = collect();
         if (!empty($seatIds)) {
             $seats = Seat::whereIn('id', $seatIds)
                 ->where('showtime_id', $showtimeId)
-                ->where('status', 'available')
                 ->get()
                 ->map(function ($seat) {
                     return [
-                        'id' => $seat->id,
+                        'id'        => $seat->id,
                         'seat_code' => $seat->seat_code,
-                        'type' => $seat->type,
-                        'price' => (float) $seat->price, // giá riêng từng ghế
-                        'status' => $seat->status,
+                        'type'      => $seat->type,
+                        'price'     => (float) $seat->price,
+                        'status'    => $seat->status, // trả trạng thái thật
                     ];
                 });
         }
 
-        // Lấy thông tin combo còn stock
+        // Combo
         $combos = collect();
         if (!empty($comboIds)) {
             $combos = Product::whereIn('id', $comboIds)
@@ -57,8 +48,8 @@ class TicketService
                 ->get()
                 ->map(function ($combo) {
                     return [
-                        'id' => $combo->id,
-                        'name' => $combo->name,
+                        'id'    => $combo->id,
+                        'name'  => $combo->name,
                         'price' => (float) $combo->price,
                         'description' => $combo->description,
                         'image' => $combo->image ? url($combo->image) : null,
@@ -67,31 +58,32 @@ class TicketService
                 });
         }
 
-        // Tính tổng tiền: ghế + combo
-        $totalPrice = $seats->sum(fn($s) => $s['price']) + $combos->sum(fn($c) => $c['price']);
+        // Tổng tiền
+        $totalPrice = $seats->sum(fn($s) => $s['price']) +
+                      $combos->sum(fn($c) => $c['price']);
 
         return [
             'success' => true,
             'data' => [
                 'showtime' => [
-                    'id' => $showtime->id,
-                    'movie' => [
-                        'id' => $showtime->movie->id ?? null,
+                    'id'         => $showtime->id,
+                    'movie'      => [
+                        'id'    => $showtime->movie->id ?? null,
                         'title' => $showtime->movie->title ?? null,
                     ],
                     'room' => [
-                        'id' => $showtime->room->id ?? null,
+                        'id'   => $showtime->room->id ?? null,
                         'name' => $showtime->room->name ?? null,
                         'cinema' => [
-                            'id' => $showtime->room->cinema->id ?? null,
+                            'id'   => $showtime->room->cinema->id ?? null,
                             'name' => $showtime->room->cinema->name ?? null,
                         ],
                     ],
-                    'show_date' => $showtime->show_date, 
+                    'show_date' => $showtime->show_date,
                     'show_time' => date('H:i', strtotime($showtime->show_time)),
                 ],
-                'seats' => $seats,
-                'combos' => $combos,
+                'seats'       => $seats,
+                'combos'      => $combos,
                 'total_price' => $totalPrice,
             ],
         ];

@@ -23,14 +23,19 @@ class Seat extends Model
         'updated_at'  => 'datetime',
     ];
 
-    // Loại ghế
+    /**
+     * LOẠI GHẾ
+     */
     public const TYPE_NORMAL = 'normal';
     public const TYPE_VIP    = 'vip';
 
-    // Trạng thái dùng khi BOOKING
-    public const STATUS_AVAILABLE = 'available'; // Chưa ai chọn
-    public const STATUS_SELECTED  = 'selected';  // Client đang chọn (chưa thanh toán)
-    public const STATUS_BOOKED    = 'booked';    // Đã mua
+    /**
+     * TRẠNG THÁI GHẾ THEO NGHIỆP VỤ ĐẶT VÉ
+     */
+    public const STATUS_AVAILABLE        = 'available';        // Chưa ai chọn
+    public const STATUS_SELECTED         = 'selected';         // FE tạm chọn
+    public const STATUS_PENDING_PAYMENT  = 'pending_payment';  // Giữ ghế khi user nhấn THANH TOÁN
+    public const STATUS_BOOKED           = 'booked';           // Đã thanh toán thành công
 
     /**
      * GHẾ THUỘC SUẤT CHIẾU
@@ -38,5 +43,29 @@ class Seat extends Model
     public function showtime()
     {
         return $this->belongsTo(Showtime::class);
+    }
+
+    /**
+     * Helper: kiểm tra ghế có đang available không
+     */
+    public function isAvailable(): bool
+    {
+        return $this->status === self::STATUS_AVAILABLE;
+    }
+
+    /**
+     * Helper: ghế đã được giữ trong quá trình thanh toán?
+     */
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING_PAYMENT;
+    }
+
+    /**
+     * Helper: ghế đã được đặt mua chưa?
+     */
+    public function isBooked(): bool
+    {
+        return $this->status === self::STATUS_BOOKED;
     }
 }

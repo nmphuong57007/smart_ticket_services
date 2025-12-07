@@ -21,7 +21,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Tạo đơn đặt vé
+     * Tạo đơn đặt vé (chỉ giữ chỗ + tạo booking pending)
      */
     public function store(BookingRequest $request)
     {
@@ -39,27 +39,28 @@ class BookingController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Đặt vé thành công',
+                'message' => 'Tạo đơn giữ chỗ thành công, vui lòng thanh toán trong 10 phút.',
                 'data' => new BookingDetailResource($booking)
             ], 201);
         } catch (Exception $e) {
+
             return response()->json([
                 'success' => false,
-                'message' => 'Đặt vé thất bại',
+                'message' => 'Không thể tạo đơn giữ chỗ.',
                 'error' => $e->getMessage()
             ], 422);
         }
     }
 
     /**
-     * Chi tiết 1 booking
+     * Chi tiết booking
      */
     public function show(Request $request, $id)
     {
         $booking = Booking::with([
             'user',
             'payments',
-            'tickets.seat',
+            'bookingSeats.seat',   //  SỬ DỤNG booking_seats
             'products.product',
             'showtime.movie',
             'showtime.room.cinema'
@@ -72,10 +73,10 @@ class BookingController extends Controller
             ], 404);
         }
 
-        // CUSTOMER chỉ xem của họ
+        // CUSTOMER chỉ được xem booking của họ
         $user = $request->user();
 
-        if ($user->role === 'customer' && $booking->user_id !== $user->id) {
+        if ($user->role === 'customer' && $booking->user_id != $user->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bạn không có quyền truy cập booking này',
@@ -89,7 +90,7 @@ class BookingController extends Controller
     }
 
     /**
-     * CUSTOMER xem danh sách booking của họ
+     * USER xem danh sách booking của họ
      */
     public function myBookings()
     {
@@ -98,8 +99,8 @@ class BookingController extends Controller
         $bookings = Booking::where('user_id', $userId)
             ->with([
                 'payments',
-                'tickets.seat',
-                'products.product',     // ⭐ LUÔN GIỮ NGUYÊN
+                'bookingSeats.seat',   //  LOAD GHẾ ĐÚNG
+                'products.product',
                 'showtime.movie',
                 'showtime.room.cinema',
             ])
@@ -110,7 +111,6 @@ class BookingController extends Controller
             'success' => true,
             'data' => BookingListResource::collection($bookings)
         ]);
-
     }
 
     /**
@@ -123,12 +123,13 @@ class BookingController extends Controller
         $query = Booking::with([
             'user',
             'payments',
+            'bookingSeats.seat',   //  QUAN TRỌNG
             'showtime.movie',
             'showtime.room.cinema'
         ]);
 
         if ($status) {
-            $query->where('payment_status', $status);
+            $query->where('booking_status', $status);
         }
 
         $bookings = $query->orderBy('id', 'desc')->paginate(15);
