@@ -22,7 +22,7 @@ class PaymentController extends Controller
     }
 
     /**
-     * Tạo URL thanh toán VNPay
+     * Tạo URL thanh toán VNPay (GIỮ NGUYÊN CHUẨN MAIN)
      */
     public function createVnpay(Request $request)
     {
@@ -33,7 +33,7 @@ class PaymentController extends Controller
         $booking = Booking::findOrFail($request->booking_id);
         $user    = $request->user();
 
-        // ❗ Không cho thanh toán nếu booking hết hạn
+        // ❗ Booking hết hạn
         if ($booking->created_at->diffInMinutes(now()) >= 10) {
             return response()->json([
                 'success' => false,
@@ -41,7 +41,7 @@ class PaymentController extends Controller
             ], 410);
         }
 
-        // VNPay config
+        // === GIỮ NGUYÊN CHUẨN VNPay ===
         $vnp_TmnCode    = config('vnpay.vnp_tmncode');
         $vnp_HashSecret = config('vnpay.vnp_hashsecret');
         $vnp_Url        = config('vnpay.vnp_url');
@@ -49,27 +49,28 @@ class PaymentController extends Controller
 
         $vnp_TxnRef = uniqid();
         $vnp_Amount = $booking->final_amount * 100;
+        $vnp_OrderInfo = "Thanh toan don hang " . $vnp_TxnRef;
 
         $inputData = [
-            "vnp_Version"    => "2.1.0",
-            "vnp_TmnCode"    => $vnp_TmnCode,
-            "vnp_Amount"     => $vnp_Amount,
-            "vnp_Command"    => "pay",
+            "vnp_Version"   => "2.1.0",
+            "vnp_TmnCode"   => $vnp_TmnCode,
+            "vnp_Amount"    => $vnp_Amount,
+            "vnp_Command"   => "pay",
             "vnp_CreateDate" => date('YmdHis'),
-            "vnp_CurrCode"   => "VND",
-            "vnp_IpAddr"     => $request->ip(),
-            "vnp_Locale"     => "vn",
-            "vnp_OrderInfo"  => "Thanh toan don hang " . $vnp_TxnRef,
-            "vnp_OrderType"  => "billpayment",
-            "vnp_ReturnUrl"  => $vnp_Returnurl,
-            "vnp_TxnRef"     => $vnp_TxnRef
+            "vnp_CurrCode"  => "VND",
+            "vnp_IpAddr"    => $request->ip(),
+            "vnp_Locale"    => "vn",
+            "vnp_OrderInfo" => $vnp_OrderInfo,
+            "vnp_OrderType" => "billpayment",
+            "vnp_ReturnUrl" => $vnp_Returnurl,
+            "vnp_TxnRef"    => $vnp_TxnRef,
         ];
 
         ksort($inputData);
         $query = http_build_query($inputData);
-        $secureHash = hash_hmac('sha512', $query, $vnp_HashSecret);
-
-        $paymentUrl = $vnp_Url . '?' . $query . '&vnp_SecureHash=' . $secureHash;
+        $vnp_SecureHash = hash_hmac('sha512', $query, $vnp_HashSecret);
+        $paymentUrl = $vnp_Url . "?" . $query . "&vnp_SecureHash=" . $vnp_SecureHash;
+        // === END GIỮ NGUYÊN ===
 
         Payment::create([
             'booking_id'       => $booking->id,
@@ -78,34 +79,45 @@ class PaymentController extends Controller
             'amount'           => $booking->final_amount,
             'transaction_uuid' => $vnp_TxnRef,
             'pay_url'          => $paymentUrl,
-            'status'           => 'pending'
+            'status'           => 'pending',
         ]);
 
         return $paymentUrl;
     }
 
     /**
-     * Callback từ VNPay
+     * Callback VNPay
      */
     public function vnpayReturn(Request $request)
     {
         $vnp_HashSecret = config('vnpay.vnp_hashsecret');
-
-        // Verify signature
-        $inputData = $request->all();
         $vnp_SecureHash = $request->vnp_SecureHash;
+
+        // === GIỮ NGUYÊN VERIFY HASH CỦA MAIN ===
+        $inputData = $request->all();
         unset($inputData['vnp_SecureHash']);
         ksort($inputData);
 
-        $hashData = urldecode(http_build_query($inputData));
+        $i = 0;
+        $hashData = "";
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashData .= urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+        }
+
         $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
 
         if ($secureHash !== $vnp_SecureHash) {
             return redirect()->away("http://localhost:5173/check-payment?RspCode=97");
         }
+        // === END VERIFY ===
 
         $txnRef = $request->vnp_TxnRef;
-        $resp   = $request->vnp_ResponseCode;
+        $respCode = $request->vnp_ResponseCode;
 
         $payment = Payment::where('transaction_uuid', $txnRef)->first();
         if (!$payment) {
@@ -114,56 +126,57 @@ class PaymentController extends Controller
 
         $booking = $payment->booking;
 
-        // ❗ CHẶN DOUBLE CALLBACK
-        if ($payment->status === 'success' || $booking->booking_status === Booking::BOOKING_PAID) {
+        // ❗ Double callback
+        if ($payment->status === 'success') {
             return redirect()->away("http://localhost:5173/check-payment?RspCode=00&Order={$txnRef}");
         }
 
-        // ❗ Nếu booking hết hạn → trả ghế + fail
+        // ❗ Booking hết hạn → trả ghế
         if ($booking->created_at->diffInMinutes(now()) >= 10) {
 
             $seatIds = BookingSeat::where('booking_id', $booking->id)
-                ->pluck('seat_id')->toArray();
+                ->pluck('seat_id')
+                ->toArray();
 
             $this->seatService->releaseSeats($seatIds);
 
-            $booking->update([
-                'booking_status' => Booking::BOOKING_EXPIRED,
-                'payment_status' => Booking::PAYMENT_FAILED
-            ]);
-
             $payment->update(['status' => 'failed']);
+            $booking->update([
+                'payment_status' => Booking::PAYMENT_FAILED,
+                'booking_status' => Booking::BOOKING_EXPIRED,
+            ]);
 
             return redirect()->away("http://localhost:5173/check-payment?RspCode=48");
         }
 
-        // ===============================
-        //        THANH TOÁN THÀNH CÔNG
-        // ===============================
-        if ($resp === '00') {
+        // ============================
+        //        SUCCESS (00)
+        // ============================
+        if ($respCode == '00') {
 
-            DB::transaction(function () use ($booking, $payment, $request) {
+            DB::transaction(function () use ($payment, $booking, $request) {
 
                 // Update payment
                 $payment->update([
                     'status'           => 'success',
                     'paid_at'          => now(),
                     'transaction_code' => $request->vnp_TransactionNo,
-                    'bank_code'        => $request->vnp_BankCode
+                    'bank_code'        => $request->vnp_BankCode,
                 ]);
 
-                // Lấy ghế từ booking_seats
+                // Ghế được chọn
                 $seatIds = BookingSeat::where('booking_id', $booking->id)
-                    ->pluck('seat_id')->toArray();
+                    ->pluck('seat_id')
+                    ->toArray();
 
-                // Chốt ghế
+                // ❗ Chốt ghế
                 $this->seatService->bookSeats($seatIds);
 
-                // Tạo ticket
-                foreach ($seatIds as $id) {
+                // ❗ Tạo vé
+                foreach ($seatIds as $seatId) {
                     Ticket::create([
                         'booking_id' => $booking->id,
-                        'seat_id'    => $id,
+                        'seat_id'    => $seatId,
                         'qr_code'    => "TICKET-" . strtoupper(Str::random(10)),
                     ]);
                 }
@@ -174,7 +187,7 @@ class PaymentController extends Controller
                     'booking_status' => Booking::BOOKING_PAID,
                 ]);
 
-                // Update promotion usage
+                // Promotion
                 if ($booking->discount_code) {
                     $promo = Promotion::where('code', $booking->discount_code)->first();
                     if ($promo) {
@@ -189,22 +202,21 @@ class PaymentController extends Controller
             return redirect()->away("http://localhost:5173/check-payment?RspCode=00&Order={$txnRef}");
         }
 
-        // ===============================
-        //        THANH TOÁN FAIL
-        // ===============================
-
+        // ============================
+        //        FAIL
+        // ============================
         $seatIds = BookingSeat::where('booking_id', $booking->id)
-            ->pluck('seat_id')->toArray();
+            ->pluck('seat_id')
+            ->toArray();
 
         $this->seatService->releaseSeats($seatIds);
 
+        $payment->update(['status' => 'failed']);
         $booking->update([
-            'booking_status' => Booking::BOOKING_CANCELED,
             'payment_status' => Booking::PAYMENT_FAILED,
+            'booking_status' => Booking::BOOKING_CANCELED,
         ]);
 
-        $payment->update(['status' => 'failed']);
-
-        return redirect()->away("http://localhost:5173/check-payment?RspCode={$resp}");
+        return redirect()->away("http://localhost:5173/check-payment?RspCode={$respCode}");
     }
 }
