@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CheckinController;
 use App\Http\Controllers\MovieController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PointsHistoryController;
@@ -263,3 +264,5 @@ Route::prefix('payment')->group(function () {
     // VNPAY CALLBACK (PUBLIC)
     Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']);
 });
+
+Route::post('/checkin', [CheckinController::class, 'checkIn'])->name('tickets.checkin');
