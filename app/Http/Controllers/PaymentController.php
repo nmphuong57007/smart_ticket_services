@@ -156,7 +156,7 @@ class PaymentController extends Controller
 
             DB::transaction(function () use ($payment, $booking, $request) {
 
-                // Update payment
+                // 1. Cập nhật payment
                 $payment->update([
                     'status'           => 'success',
                     'paid_at'          => now(),
@@ -164,24 +164,42 @@ class PaymentController extends Controller
                     'bank_code'        => $request->vnp_BankCode,
                 ]);
 
-                // Ghế được chọn
+                // 2. Lấy danh sách ghế của booking
                 $seatIds = BookingSeat::where('booking_id', $booking->id)
                     ->pluck('seat_id')
                     ->toArray();
 
-                // ❗ Chốt ghế
+                // 3. Chốt ghế
                 $this->seatService->bookSeats($seatIds);
 
-                // ❗ Tạo vé
+                // 4. Mỗi ghế => 1 vé => 1 QR riêng
                 foreach ($seatIds as $seatId) {
-                    Ticket::create([
+                    // Tạo vé trước
+                    $ticket = Ticket::create([
                         'booking_id' => $booking->id,
                         'seat_id'    => $seatId,
-                        'qr_code'    => "TICKET-" . strtoupper(Str::random(10)),
+                    ]);
+
+                    // Payload cho QR
+                    $payload = [
+                        'ticket_id'   => $ticket->id,
+                        'booking_id'  => $booking->id,
+                        'seat_id'     => $seatId,
+                        'user_id'     => $booking->user_id ?? null,
+                        'showtime_id' => $booking->showtime_id ?? null,
+                        'created_at'  => now()->toIso8601String(),
+                    ];
+
+                    // Encode → chuỗi QR
+                    $qrString = base64_encode(json_encode($payload));
+
+                    // Lưu vào vé
+                    $ticket->update([
+                        'qr_code' => $qrString,
                     ]);
                 }
 
-                // Update booking
+                // 5. Cập nhật booking
                 $booking->update([
                     'payment_status' => Booking::PAYMENT_PAID,
                     'booking_status' => Booking::BOOKING_PAID,
