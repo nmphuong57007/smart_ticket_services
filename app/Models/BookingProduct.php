@@ -9,25 +9,21 @@ class BookingProduct extends Model
 {
     use HasFactory;
 
+    protected $table = 'booking_products';
+
     public $timestamps = false;
 
     protected $fillable = [
         'booking_id',
         'product_id',
-        'quantity'
+        'quantity',
     ];
 
-    //-------------------------
-    // Relationships
-    //-------------------------
-
-    // Thuộc booking
     public function booking()
     {
         return $this->belongsTo(Booking::class);
     }
 
-    // Sản phẩm
     public function product()
     {
         return $this->belongsTo(Product::class);

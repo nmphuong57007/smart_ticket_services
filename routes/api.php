@@ -265,4 +265,8 @@ Route::prefix('payment')->group(function () {
     Route::get('/vnpay/return', [PaymentController::class, 'vnpayReturn']);
 });
 
-Route::post('/checkin', [CheckinController::class, 'checkIn'])->name('tickets.checkin');
+// TICKET CHECK-IN ROUTES
+Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
+    Route::post('/checkin', [CheckinController::class, 'checkIn'])
+        ->name('tickets.checkin');
+});

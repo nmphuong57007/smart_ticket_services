@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Http\Resources\CheckinResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -10,16 +11,14 @@ class CheckinController extends Controller
 {
     public function checkIn(Request $request)
     {
-        // 1. Validate input
         $request->validate([
             'qr_code' => 'required|string',
         ]);
 
         $qrString = $request->input('qr_code');
 
-        // 2. Giải mã chuỗi QR: base64 -> JSON -> array
+        // base64 -> json
         $json = base64_decode($qrString, true);
-
         if ($json === false) {
             return response()->json([
                 'success' => false,
@@ -29,18 +28,24 @@ class CheckinController extends Controller
 
         $data = json_decode($json, true);
 
-        if (!is_array($data) || !isset($data['ticket_id'], $data['booking_id'], $data['seat_id'])) {
+        if (!is_array($data) || !isset($data['ticket_id'], $data['booking_id'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'QR không hợp lệ (thiếu dữ liệu)',
+                'message' => 'QR không hợp lệ (thiếu ticket_id/booking_id)',
             ], 400);
         }
 
-        // 3. Tìm vé trong DB & đảm bảo QR đúng với vé
-        $ticket = Ticket::where('id', $data['ticket_id'])
+        // Tìm ticket + load booking detail
+        $ticket = Ticket::with([
+            'booking.user',
+            'booking.bookingSeats.seat',
+            'booking.products.product',
+            'booking.showtime.movie',
+            'booking.showtime.room.cinema',
+        ])
+            ->where('id', $data['ticket_id'])
             ->where('booking_id', $data['booking_id'])
-            ->where('seat_id', $data['seat_id'])
-            ->where('qr_code', $qrString) // chống sửa payload
+            ->where('qr_code', $qrString)
             ->first();
 
         if (!$ticket) {
@@ -50,42 +55,31 @@ class CheckinController extends Controller
             ], 404);
         }
 
-        // 4. Kiểm tra đã check-in chưa
+        // Đã check-in
         if ($ticket->is_checked_in) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vé này đã được check-in trước đó!',
                 'data' => [
                     'ticket_id'     => $ticket->id,
+                    'booking_id'    => $ticket->booking_id,
                     'checked_in_at' => $ticket->checked_in_at,
                 ],
             ], 409);
         }
 
-        // (Tuỳ bạn) 5. Có thể kiểm tra thêm giờ chiếu đã quá hạn chưa:
-        // if ($ticket->booking->showtime->start_time < now()->subMinutes(15)) { ... }
-
-        // 6. Đánh dấu check-in
+        // Check-in
         $ticket->is_checked_in = true;
         $ticket->checked_in_at = now();
-
-        // Nếu bạn dùng Auth cho nhân viên:
         if (Auth::check()) {
             $ticket->checked_in_by = Auth::id();
         }
-
         $ticket->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Check-in thành công!',
-            'data' => [
-                'ticket_id'   => $ticket->id,
-                'booking_id'  => $ticket->booking_id,
-                'seat_id'     => $ticket->seat_id,
-                'is_checked_in' => $ticket->is_checked_in,
-                'checked_in_at' => $ticket->checked_in_at,
-            ],
+            'data' => new CheckinResource($ticket),
         ]);
     }
 }

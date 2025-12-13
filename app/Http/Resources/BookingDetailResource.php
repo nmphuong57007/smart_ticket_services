@@ -3,34 +3,25 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Carbon\Carbon;
 
 class BookingDetailResource extends JsonResource
 {
     public function toArray($request)
     {
-        // Lấy payment mới nhất
-        $payment = $this->payments->sortByDesc('id')->first();
+        // Payment mới nhất
+        $payment = $this->payments?->sortByDesc('id')->first();
 
-        // Nếu booking đã thanh toán -> dùng tickets thay vì booking_seats
-        $isPaid = $this->payment_status === 'paid';
+        // QR theo booking
+        $qrCode = $this->ticket?->qr_code;
 
-        // Xử lý poster phim
-        $poster = $this->showtime->movie->poster ?? null;
-
-        if ($poster) {
-            if (str_starts_with($poster, 'http')) {
-                // Nếu đã là URL tuyệt đối
-                $posterUrl = $poster;
-            } else {
-                // Nếu là file trong storage
-                $posterUrl = url('storage/' . $poster);
-            }
-        } else {
-            $posterUrl = null;
-        }
+        // Poster phim
+        $poster = $this->showtime?->movie?->poster;
+        $posterUrl = $poster
+            ? (str_starts_with($poster, 'http') ? $poster : url('storage/' . $poster))
+            : null;
 
         return [
-
             // ======= THÔNG TIN ĐƠN HÀNG =======
             'id'               => $this->id,
             'booking_code'     => $this->booking_code,
@@ -39,71 +30,79 @@ class BookingDetailResource extends JsonResource
             'transaction_code' => $payment->transaction_code ?? null,
             'payment_method'   => $payment->method ?? null,
             'final_amount'     => $this->final_amount,
-            'created_at'       => $this->created_at?->format('Y-m-d H:i'),
+
+            // ⏰ GIỜ VIỆT NAM
+            'created_at' => $this->created_at
+                ? $this->created_at->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s')
+                : null,
+
+            // ======= CHECK-IN =======
+            'qr_code'       => $qrCode,
+            'is_checked_in' => (bool) $this->ticket?->is_checked_in,
+
+            'checked_in_at' => $this->ticket?->checked_in_at
+                ? $this->ticket->checked_in_at->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s')
+                : null,
+
+            'checked_in_by' => $this->ticket?->checked_in_by,
 
             // ======= NGƯỜI DÙNG =======
             'user' => [
-                'fullname' => $this->user->fullname ?? null,
-                'email'    => $this->user->email ?? null,
-                'phone'    => $this->user->phone ?? null,
+                'fullname' => $this->user?->fullname,
+                'email'    => $this->user?->email,
+                'phone'    => $this->user?->phone,
             ],
 
-            // ======= THÔNG TIN PHIM =======
+            // ======= PHIM =======
             'movie' => [
-                'id'       => $this->showtime->movie->id ?? null,
-                'title'    => $this->showtime->movie->title ?? null,
-                'duration' => $this->showtime->movie->duration ?? null,
-                'poster'   => $posterUrl, // FIXED
+                'id'       => $this->showtime?->movie?->id,
+                'title'    => $this->showtime?->movie?->title,
+                'duration' => $this->showtime?->movie?->duration,
+                'poster'   => $posterUrl,
             ],
 
             // ======= SUẤT CHIẾU =======
             'showtime' => [
-                'id'   => $this->showtime->id ?? null,
-                'date' => $this->showtime->show_date ?? null,
-                'time' => $this->showtime->show_time ?? null,
-                'type' => $this->showtime->type ?? null,
+                'id'   => $this->showtime?->id,
+                'date' => $this->showtime?->show_date,
+                'time' => $this->showtime?->show_time,
+                'type' => $this->showtime?->type,
             ],
 
             // ======= RẠP & PHÒNG =======
             'cinema' => [
-                'id'   => $this->showtime->room->cinema->id ?? null,
-                'name' => $this->showtime->room->cinema->name ?? null,
+                'id'   => $this->showtime?->room?->cinema?->id,
+                'name' => $this->showtime?->room?->cinema?->name,
             ],
 
             'room' => [
-                'id'   => $this->showtime->room->id ?? null,
-                'name' => $this->showtime->room->name ?? null,
+                'id'   => $this->showtime?->room?->id,
+                'name' => $this->showtime?->room?->name,
             ],
 
             // ======= GHẾ =======
-            'seats' => $isPaid
-                ? $this->tickets->map(function ($ticket) {
+            'seats' => $this->bookingSeats
+                ? $this->bookingSeats->map(function ($item) {
+                    $seat = $item->seat;
                     return [
-                        'id'         => $ticket->seat->id,
-                        'seat_code'  => $ticket->seat->seat_code,
-                        'type'       => $ticket->seat->type,
-                        'price'      => $ticket->seat->price,
-                        'qr_code'    => $ticket->qr_code,
+                        'id'        => $seat?->id,
+                        'seat_code' => $seat?->seat_code,
+                        'type'      => $seat?->type,
+                        'price'     => $seat?->price,
                     ];
-                })
-                : $this->bookingSeats->map(function ($item) {
-                    return [
-                        'id'         => $item->seat->id,
-                        'seat_code'  => $item->seat->seat_code,
-                        'type'       => $item->seat->type,
-                        'price'      => $item->seat->price,
-                        'qr_code'    => null,
-                    ];
-                }),
+                })->values()
+                : [],
 
             // ======= SẢN PHẨM =======
-            'products' => $this->products->map(function ($item) {
-                return [
-                    'name'     => $item->product->name ?? null,
-                    'quantity' => $item->quantity ?? 0,
-                    'price'    => $item->product->price ?? 0,
-                ];
-            }),
+            'products' => $this->products
+                ? $this->products->map(function ($item) {
+                    return [
+                        'name'     => $item->product->name ?? null,
+                        'quantity' => $item->quantity ?? 0,
+                        'price'    => $item->product->price ?? 0,
+                    ];
+                })->values()
+                : [],
         ];
     }
 }

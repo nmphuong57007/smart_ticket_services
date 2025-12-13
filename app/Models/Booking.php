@@ -45,37 +45,51 @@ class Booking extends Model
         'updated_at'    => 'datetime',
     ];
 
-    // Quan hệ
+    // Quan hệ user
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    // Quan hệ showtime
     public function showtime()
     {
         return $this->belongsTo(Showtime::class);
     }
 
+    // Quan hệ ticket
     public function tickets()
     {
         return $this->hasMany(Ticket::class);
     }
 
+    // Quan hệ sản phẩm đã mua trong booking
     public function products()
     {
         return $this->hasMany(BookingProduct::class);
     }
 
+    // Quan hệ thanh toán
     public function payments()
     {
         return $this->hasMany(Payment::class);
     }
+
+    // Quan hệ booking_seats
     public function bookingSeats()
     {
         return $this->hasMany(BookingSeat::class);
     }
+
+    // Lấy danh sách ghế qua bảng trung gian booking_seats
     public function seats()
     {
-        return $this->belongsToMany(Seat::class, 'booking_seats');
+        return $this->belongsToMany(Seat::class, 'booking_seats', 'booking_id', 'seat_id');
+    }
+
+    // Lấy ticket liên quan (1 booking có thể có nhiều ticket, nhưng lấy 1 ticket để check-in)
+    public function ticket()
+    {
+        return $this->hasOne(Ticket::class, 'booking_id');
     }
 }
