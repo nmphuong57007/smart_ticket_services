@@ -8,28 +8,24 @@ class BookingListResource extends JsonResource
 {
     public function toArray($request)
     {
-        // Payment mới nhất
-        $payment = $this->payments->sortByDesc('id')->first();
+        // Payment mới nhất (tránh lỗi nếu payments chưa load)
+        $payment = $this->payments?->sortByDesc('id')->first();
 
-        // Xác định dùng seats từ bảng nào
-        $isPaid = $this->payment_status === 'paid';
-
-        // Lấy danh sách seat codes
-        $seats = $isPaid
-            ? $this->tickets->map(fn($t) => $t->seat->seat_code)
-            : $this->bookingSeats->map(fn($bs) => $bs->seat->seat_code);
+        // Lấy danh sách seat codes (LUÔN lấy từ booking_seats)
+        $seats = $this->bookingSeats
+            ? $this->bookingSeats
+            ->map(fn($bs) => $bs->seat?->seat_code)
+            ->filter()
+            ->values()
+            : collect();
 
         // Xử lý poster phim
-        $poster = $this->showtime->movie->poster ?? null;
+        $poster = $this->showtime?->movie?->poster;
 
         if ($poster) {
-            // Nếu là URL tuyệt đối → giữ nguyên
-            if (str_starts_with($poster, 'http')) {
-                $posterUrl = $poster;
-            } else {
-                // Nếu là file trong storage → thêm domain
-                $posterUrl = url('storage/' . $poster);
-            }
+            $posterUrl = str_starts_with($poster, 'http')
+                ? $poster
+                : url('storage/' . $poster);
         } else {
             $posterUrl = null;
         }
@@ -45,15 +41,15 @@ class BookingListResource extends JsonResource
             'payment_status' => $this->payment_status,
 
             // ===== KHÁCH HÀNG =====
-            'email' => $this->user->email ?? null,
+            'email' => $this->user?->email,
 
             // ===== PHIM =====
-            'movie_title'  => $this->showtime->movie->title ?? null,
+            'movie_title'  => $this->showtime?->movie?->title,
             'movie_poster' => $posterUrl,
 
             // ===== RẠP & PHÒNG =====
-            'cinema'    => $this->showtime->room->cinema->name ?? null,
-            'room_name' => $this->showtime->room->name ?? null,
+            'cinema'    => $this->showtime?->room?->cinema?->name,
+            'room_name' => $this->showtime?->room?->name,
 
             // ===== GHẾ =====
             'seats'      => $seats,
@@ -65,6 +61,9 @@ class BookingListResource extends JsonResource
 
             // ===== SỐ TIỀN =====
             'final_amount' => $this->final_amount,
+
+            // ===== QR (1 booking = 1 QR) =====
+            'qr_code' => $this->ticket?->qr_code,
         ];
     }
 }

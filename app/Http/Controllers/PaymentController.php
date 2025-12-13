@@ -7,9 +7,10 @@ use App\Models\Payment;
 use App\Models\Ticket;
 use App\Models\Promotion;
 use App\Models\BookingSeat;
+use App\Models\Product;
+use App\Models\BookingProduct;
 use App\Http\Services\Seat\SeatService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
@@ -126,12 +127,12 @@ class PaymentController extends Controller
 
         $booking = $payment->booking;
 
-        // ❗ Double callback
+        // Double callback
         if ($payment->status === 'success') {
             return redirect()->away("http://localhost:5173/check-payment?RspCode=00&Order={$txnRef}");
         }
 
-        // ❗ Booking hết hạn → trả ghế
+        // Booking hết hạn → trả ghế
         if ($booking->created_at->diffInMinutes(now()) >= 10) {
 
             $seatIds = BookingSeat::where('booking_id', $booking->id)
@@ -149,12 +150,20 @@ class PaymentController extends Controller
             return redirect()->away("http://localhost:5173/check-payment?RspCode=48");
         }
 
-        // ============================
         //        SUCCESS (00)
-        // ============================
         if ($respCode == '00') {
 
             DB::transaction(function () use ($payment, $booking, $request) {
+
+                // 0. Lock booking để tránh trạng thái bị chạy trùng trong transaction
+                $bookingLocked = Booking::where('id', $booking->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                // Nếu đã paid rồi thì thôi (an toàn)
+                if ($bookingLocked->payment_status === Booking::PAYMENT_PAID) {
+                    return;
+                }
 
                 // 1. Cập nhật payment
                 $payment->update([
@@ -165,45 +174,80 @@ class PaymentController extends Controller
                 ]);
 
                 // 2. Lấy danh sách ghế của booking
-                $seatIds = BookingSeat::where('booking_id', $booking->id)
+                $seatIds = BookingSeat::where('booking_id', $bookingLocked->id)
                     ->pluck('seat_id')
                     ->toArray();
 
                 // 3. Chốt ghế
                 $this->seatService->bookSeats($seatIds);
 
-                // 4. Mỗi ghế => 1 vé => 1 QR riêng
+                        // 3.5 TRỪ KHO SẢN PHẨM (COMBO)
+                        $bookingProducts = BookingProduct::where('booking_id', $bookingLocked->id)->get();
+
+                if ($bookingProducts->isNotEmpty()) {
+                    $productIds = $bookingProducts->pluck('product_id')->unique()->values();
+
+                    // Lock các sản phẩm
+                    $products = Product::whereIn('id', $productIds)
+                        ->lockForUpdate()
+                        ->get()
+                        ->keyBy('id');
+
+                    // Check tồn kho + active
+                    foreach ($bookingProducts as $bp) {
+                        $p = $products->get($bp->product_id);
+
+                        if (!$p) {
+                            throw new \Exception("Sản phẩm không tồn tại (ID {$bp->product_id}).");
+                        }
+
+                        if (!$p->is_active) {
+                            throw new \Exception("Sản phẩm {$p->name} đang tạm ngưng bán.");
+                        }
+
+                        if ($p->stock < $bp->quantity) {
+                            throw new \Exception("Sản phẩm {$p->name} không đủ tồn kho.");
+                        }
+                    }
+
+                    // Trừ kho
+                    foreach ($bookingProducts as $bp) {
+                        $p = $products[$bp->product_id];
+                        $p->stock = $p->stock - $bp->quantity;
+                        $p->save();
+                    }
+                }
+
+                // 4. Tạo ticket 1 booking = 1 QR
                 $ticket = Ticket::firstOrCreate(
-                    ['booking_id' => $booking->id],
+                    ['booking_id' => $bookingLocked->id],
                     ['qr_code' => null]
                 );
 
-                // Payload cho QR (không cần seat_id nữa)
+                // Payload cho QR
                 $payload = [
                     'ticket_id'   => $ticket->id,
-                    'booking_id'  => $booking->id,
-                    'user_id'     => $booking->user_id ?? null,
-                    'showtime_id' => $booking->showtime_id ?? null,
+                    'booking_id'  => $bookingLocked->id,
+                    'user_id'     => $bookingLocked->user_id ?? null,
+                    'showtime_id' => $bookingLocked->showtime_id ?? null,
                     'created_at'  => now()->toIso8601String(),
                 ];
 
-                // Encode → chuỗi QR
                 $qrString = base64_encode(json_encode($payload));
 
-                // Lưu QR (chỉ update nếu chưa có để tránh đổi QR khi callback lại)
                 if (empty($ticket->qr_code)) {
                     $ticket->update(['qr_code' => $qrString]);
                 }
 
                 // 5. Cập nhật booking
-                $booking->update([
+                $bookingLocked->update([
                     'payment_status' => Booking::PAYMENT_PAID,
                     'booking_status' => Booking::BOOKING_PAID,
                 ]);
 
-                // Promotion
-                if ($booking->discount_code) {
-                    $promo = Promotion::where('code', $booking->discount_code)->first();
+                // 6. Promotion
+                if ($bookingLocked->discount_code) {
+                    $promo = Promotion::where('code', $bookingLocked->discount_code)->first();
                     if ($promo) {
                         $promo->increment('used_count');
                         if ($promo->usage_limit && $promo->used_count >= $promo->usage_limit) {
@@ -216,9 +260,7 @@ class PaymentController extends Controller
             return redirect()->away("http://localhost:5173/check-payment?RspCode=00&Order={$txnRef}");
         }
 
-        // ============================
         //        FAIL
-        // ============================
         $seatIds = BookingSeat::where('booking_id', $booking->id)
             ->pluck('seat_id')
             ->toArray();
