@@ -173,30 +173,26 @@ class PaymentController extends Controller
                 $this->seatService->bookSeats($seatIds);
 
                 // 4. Mỗi ghế => 1 vé => 1 QR riêng
-                foreach ($seatIds as $seatId) {
-                    // Tạo vé trước
-                    $ticket = Ticket::create([
-                        'booking_id' => $booking->id,
-                        'seat_id'    => $seatId,
-                    ]);
+                $ticket = Ticket::firstOrCreate(
+                    ['booking_id' => $booking->id],
+                    ['qr_code' => null]
+                );
 
-                    // Payload cho QR
-                    $payload = [
-                        'ticket_id'   => $ticket->id,
-                        'booking_id'  => $booking->id,
-                        'seat_id'     => $seatId,
-                        'user_id'     => $booking->user_id ?? null,
-                        'showtime_id' => $booking->showtime_id ?? null,
-                        'created_at'  => now()->toIso8601String(),
-                    ];
+                // Payload cho QR (không cần seat_id nữa)
+                $payload = [
+                    'ticket_id'   => $ticket->id,
+                    'booking_id'  => $booking->id,
+                    'user_id'     => $booking->user_id ?? null,
+                    'showtime_id' => $booking->showtime_id ?? null,
+                    'created_at'  => now()->toIso8601String(),
+                ];
 
-                    // Encode → chuỗi QR
-                    $qrString = base64_encode(json_encode($payload));
+                // Encode → chuỗi QR
+                $qrString = base64_encode(json_encode($payload));
 
-                    // Lưu vào vé
-                    $ticket->update([
-                        'qr_code' => $qrString,
-                    ]);
+                // Lưu QR (chỉ update nếu chưa có để tránh đổi QR khi callback lại)
+                if (empty($ticket->qr_code)) {
+                    $ticket->update(['qr_code' => $qrString]);
                 }
 
                 // 5. Cập nhật booking
