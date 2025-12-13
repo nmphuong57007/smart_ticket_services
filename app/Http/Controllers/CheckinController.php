@@ -82,8 +82,6 @@ class CheckinController extends Controller
             return [
                 'seat_id'   => $bs->seat_id,
                 'seat_code' => optional($bs->seat)->seat_code ?? optional($bs->seat)->code ?? null,
-                'row'       => optional($bs->seat)->row ?? null,
-                'col'       => optional($bs->seat)->col ?? null,
                 'type'      => optional($bs->seat)->type ?? null,
             ];
         })->values();
@@ -118,8 +116,8 @@ class CheckinController extends Controller
                 ],
                 'showtime' => [
                     'showtime_id' => optional($booking->showtime)->id,
-                    'date'        => optional($booking->showtime)->date ?? null,
-                    'time'        => optional($booking->showtime)->time ?? null,
+                    'date'        => optional($booking->showtime)->show_date ?? null,
+                    'time'        => optional($booking->showtime)->show_time ?? null,
                     'movie'       => [
                         'id'    => optional(optional($booking->showtime)->movie)->id,
                         'title' => optional(optional($booking->showtime)->movie)->title,
