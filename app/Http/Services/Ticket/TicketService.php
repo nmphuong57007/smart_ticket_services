@@ -64,7 +64,7 @@ class TicketService
             $combos->sum(fn($c) => $c['price']);
 
         // ==========================
-        // ⭐ LOGIC MÃ GIẢM GIÁ CHUẨN THEO DATABASE
+        // LOGIC MÃ GIẢM GIÁ CHUẨN THEO DATABASE
         // ==========================
         $promotion = null;
         $discount = 0;

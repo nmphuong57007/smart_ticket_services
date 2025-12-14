@@ -43,7 +43,6 @@ class BookingController extends Controller
                 'data' => new BookingDetailResource($booking)
             ], 201);
         } catch (Exception $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể tạo đơn giữ chỗ.',
@@ -60,7 +59,8 @@ class BookingController extends Controller
         $booking = Booking::with([
             'user',
             'payments',
-            'bookingSeats.seat',   //  SỬ DỤNG booking_seats
+            'ticket',
+            'bookingSeats.seat',
             'products.product',
             'showtime.movie',
             'showtime.room.cinema'
@@ -99,7 +99,8 @@ class BookingController extends Controller
         $bookings = Booking::where('user_id', $userId)
             ->with([
                 'payments',
-                'bookingSeats.seat',   //  LOAD GHẾ ĐÚNG
+                'ticket',
+                'bookingSeats.seat',
                 'products.product',
                 'showtime.movie',
                 'showtime.room.cinema',
@@ -114,25 +115,61 @@ class BookingController extends Controller
     }
 
     /**
-     * ADMIN / STAFF xem toàn bộ booking
+     * ADMIN / STAFF xem & LỌC toàn bộ booking
      */
     public function index(Request $request)
     {
-        $status = $request->query('status');
-
         $query = Booking::with([
             'user',
             'payments',
-            'bookingSeats.seat',   //  QUAN TRỌNG
+            'ticket',
+            'bookingSeats.seat',
             'showtime.movie',
             'showtime.room.cinema'
         ]);
 
-        if ($status) {
-            $query->where('booking_status', $status);
+        // ===== ADMIN FILTER =====
+
+        // 1. Lọc theo booking_id
+        if ($request->filled('booking_id')) {
+            $query->where('id', $request->booking_id);
         }
 
-        $bookings = $query->orderBy('id', 'desc')->paginate(15);
+        // 2. Lọc theo booking_code
+        if ($request->filled('booking_code')) {
+            $query->where('booking_code', 'like', '%' . $request->booking_code . '%');
+        }
+
+        // 3. Lọc theo QR code (decode → booking_id)
+        if ($request->filled('qr_code')) {
+            $json = base64_decode($request->qr_code, true);
+            $data = json_decode($json, true);
+
+            if (is_array($data) && isset($data['booking_id'])) {
+                $query->where('id', $data['booking_id']);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'QR không hợp lệ',
+                ], 422);
+            }
+        }
+
+        // 4. Lọc theo tên người dùng
+        if ($request->filled('user_name')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('fullname', 'like', '%' . $request->user_name . '%');
+            });
+        }
+
+        // 5. Lọc theo trạng thái booking
+        if ($request->filled('status')) {
+            $query->where('booking_status', $request->status);
+        }
+
+        $bookings = $query
+            ->orderBy('id', 'desc')
+            ->paginate(15);
 
         return response()->json([
             'success' => true,
