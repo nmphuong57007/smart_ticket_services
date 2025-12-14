@@ -24,6 +24,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ProductController;
 
+use App\Http\Controllers\DashboardController;
 
 Route::get(
     '/health-check',
@@ -156,7 +157,7 @@ Route::prefix('promotions')
         Route::post('/', [PromotionController::class, 'store']); // Tạo mã giảm giá mới
         Route::patch('/{id}', [PromotionController::class, 'update']); // Cập nhật mã giảm giá
         Route::delete('/{id}', [PromotionController::class, 'destroy']); // Xóa mã giảm giá
-});
+    });
 
 
 // Product routes
@@ -269,4 +270,11 @@ Route::prefix('payment')->group(function () {
 Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
     Route::post('/checkin', [CheckinController::class, 'checkIn'])
         ->name('tickets.checkin');
+});
+
+//  DASHBOARD ROUTES
+// Chỉ dùng để hiển thị dashboard (admin / staff)
+Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
+
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 });
