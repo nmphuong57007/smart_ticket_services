@@ -13,7 +13,7 @@ use App\Http\Services\Movie\MovieService;
 use App\Http\Resources\MovieStatisticsResource;
 use App\Http\Validator\Movie\MovieFilterValidator;
 
-class MovieController extends Controller
+class   MovieController extends Controller
 {
     protected MovieService $movieService;
     protected MovieFilterValidator $movieFilterValidator;
