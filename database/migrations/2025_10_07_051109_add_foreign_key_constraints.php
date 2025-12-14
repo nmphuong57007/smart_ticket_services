@@ -43,7 +43,7 @@ return new class extends Migration
 
         Schema::table('tickets', function (Blueprint $table) {
             $table->foreign('booking_id')->references('id')->on('bookings')->onDelete('cascade');
-            $table->foreign('seat_id')->references('id')->on('seats');
+            // $table->foreign('seat_id')->references('id')->on('seats');
         });
 
         Schema::table('booking_products', function (Blueprint $table) {
@@ -65,7 +65,7 @@ return new class extends Migration
 
         Schema::table('tickets', function (Blueprint $table) {
             $table->dropForeign(['booking_id']);
-            $table->dropForeign(['seat_id']);
+            // $table->dropForeign(['seat_id']);
         });
 
         Schema::table('payments', function (Blueprint $table) {
