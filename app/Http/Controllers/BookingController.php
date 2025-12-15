@@ -21,7 +21,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Tạo đơn đặt vé (chỉ giữ chỗ + tạo booking pending)
+     * Tạo đơn đặt vé (CUSTOMER)
      */
     public function store(BookingRequest $request)
     {
@@ -40,19 +40,19 @@ class BookingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Tạo đơn giữ chỗ thành công, vui lòng thanh toán trong 10 phút.',
-                'data' => new BookingDetailResource($booking)
+                'data'    => new BookingDetailResource($booking)
             ], 201);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể tạo đơn giữ chỗ.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 422);
         }
     }
 
     /**
-     * Chi tiết booking
+     * Chi tiết booking (CUSTOMER / STAFF / ADMIN)
      */
     public function show(Request $request, $id)
     {
@@ -69,28 +69,28 @@ class BookingController extends Controller
         if (!$booking) {
             return response()->json([
                 'success' => false,
-                'message' => 'Không tìm thấy booking',
+                'message' => 'Không tìm thấy đơn vé',
             ], 404);
         }
 
-        // CUSTOMER chỉ được xem booking của họ
+        // CUSTOMER chỉ xem được đơn của mình
         $user = $request->user();
-
-        if ($user->role === 'customer' && $booking->user_id != $user->id) {
+        if ($user->role === 'customer' && $booking->user_id !== $user->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bạn không có quyền truy cập booking này',
+                'message' => 'Bạn không có quyền truy cập đơn vé này',
             ], 403);
         }
 
         return response()->json([
             'success' => true,
-            'data' => new BookingDetailResource($booking)
+            'message' => 'Chi tiết đơn vé',
+            'data'    => new BookingDetailResource($booking)
         ]);
     }
 
     /**
-     * USER xem danh sách booking của họ
+     * CUSTOMER xem danh sách booking của họ
      */
     public function myBookings()
     {
@@ -110,12 +110,13 @@ class BookingController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => BookingListResource::collection($bookings)
+            'message' => 'Danh sách đơn vé của bạn',
+            'data'    => BookingListResource::collection($bookings)
         ]);
     }
 
     /**
-     * ADMIN / STAFF xem & LỌC toàn bộ booking
+     * ADMIN / STAFF xem & lọc danh sách booking
      */
     public function index(Request $request)
     {
@@ -128,19 +129,19 @@ class BookingController extends Controller
             'showtime.room.cinema'
         ]);
 
-        // ===== ADMIN FILTER =====
+        // ===== FILTER =====
 
-        // 1. Lọc theo booking_id
+        // 1. booking_id
         if ($request->filled('booking_id')) {
             $query->where('id', $request->booking_id);
         }
 
-        // 2. Lọc theo booking_code
+        // 2. booking_code
         if ($request->filled('booking_code')) {
             $query->where('booking_code', 'like', '%' . $request->booking_code . '%');
         }
 
-        // 3. Lọc theo QR code (decode → booking_id)
+        // 3. QR code → decode → booking_id
         if ($request->filled('qr_code')) {
             $json = base64_decode($request->qr_code, true);
             $data = json_decode($json, true);
@@ -150,30 +151,38 @@ class BookingController extends Controller
             } else {
                 return response()->json([
                     'success' => false,
-                    'message' => 'QR không hợp lệ',
+                    'message' => 'QR không hợp lệ hoặc không tìm thấy đơn vé',
                 ], 422);
             }
         }
 
-        // 4. Lọc theo tên người dùng
+        // 4. user name
         if ($request->filled('user_name')) {
             $query->whereHas('user', function ($q) use ($request) {
                 $q->where('fullname', 'like', '%' . $request->user_name . '%');
             });
         }
 
-        // 5. Lọc theo trạng thái booking
+        // 5. booking status
         if ($request->filled('status')) {
             $query->where('booking_status', $request->status);
         }
 
-        $bookings = $query
-            ->orderBy('id', 'desc')
-            ->paginate(15);
+        $bookings = $query->orderBy('id', 'desc')->paginate(15);
+
+        // ===== MESSAGE =====
+        if ($bookings->isEmpty()) {
+            $message = 'Không tìm thấy đơn vé phù hợp với điều kiện lọc';
+        } elseif ($request->query()) {
+            $message = 'Danh sách đơn vé theo bộ lọc';
+        } else {
+            $message = 'Danh sách toàn bộ đơn vé';
+        }
 
         return response()->json([
             'success' => true,
-            'data' => BookingListResource::collection($bookings)
+            'message' => $message,
+            'data'    => BookingListResource::collection($bookings)
         ]);
     }
 }

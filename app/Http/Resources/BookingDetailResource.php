@@ -31,7 +31,7 @@ class BookingDetailResource extends JsonResource
             'payment_method'   => $payment->method ?? null,
             'final_amount'     => $this->final_amount,
 
-            // ⏰ GIỜ VIỆT NAM
+            // GIỜ VIỆT NAM
             'created_at' => $this->created_at
                 ? $this->created_at->timezone('Asia/Ho_Chi_Minh')->format('Y-m-d H:i:s')
                 : null,
