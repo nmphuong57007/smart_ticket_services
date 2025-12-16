@@ -24,6 +24,8 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\ProductController;
 
+use App\Http\Controllers\ChatbotController;
+
 use App\Http\Controllers\DashboardController;
 
 Route::get(
@@ -38,6 +40,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
     Route::post('/reset-password', [ResetPasswordController::class, 'reset']);
 });
+
+// Chatbot route (public for now, can add auth later)
+Route::post('/chatbot', [ChatbotController::class, 'chat']);
 
 // Protected routes (authentication required)
 Route::middleware('api.auth')->group(function () {
