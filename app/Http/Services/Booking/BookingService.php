@@ -11,6 +11,7 @@ use App\Models\Showtime;
 use App\Http\Services\Promotion\PromotionService;
 use App\Http\Services\Seat\SeatService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Exception;
 
 class BookingService
@@ -34,13 +35,13 @@ class BookingService
             $products     = $data['products'] ?? [];
             $discountCode = $data['discount_code'] ?? null;
 
-            // 1. Kiểm tra suất chiếu hợp lệ
+
             $showtime = Showtime::find($showtimeId);
             if (!$showtime) {
                 throw new Exception("Suất chiếu không tồn tại.");
             }
 
-            // 2. Lấy danh sách ghế và khóa
+
             $seats = Seat::whereIn('id', $seatIds)
                 ->where('showtime_id', $showtimeId)
                 ->lockForUpdate()
@@ -56,10 +57,10 @@ class BookingService
                 }
             }
 
-            // 3. Tính tiền ghế
+
             $totalSeatPrice = $seats->sum('price');
 
-            // 4. Tính tiền combo
+
             $totalProductPrice = 0;
             foreach ($products as $item) {
                 $product = Product::find($item['product_id']);
@@ -71,7 +72,7 @@ class BookingService
 
             $subTotal = $totalSeatPrice + $totalProductPrice;
 
-            // 5. Áp dụng mã giảm giá
+
             $discountAmount = 0;
 
             if ($discountCode) {
@@ -92,7 +93,7 @@ class BookingService
 
             $finalAmount = $subTotal - $discountAmount;
 
-            // 6. Tạo booking (chưa tạo ticket)
+
             $booking = Booking::create([
                 'user_id'        => $userId,
                 'showtime_id'    => $showtimeId,
@@ -105,10 +106,10 @@ class BookingService
                 'booking_code'   => 'BK' . time() . rand(100, 999),
             ]);
 
-            // 7. Giữ ghế pending_payment
+
             $this->seatService->holdSeats($seatIds);
 
-            // 8. Lưu danh sách ghế vào bảng booking_seats
+
             foreach ($seatIds as $seatId) {
                 BookingSeat::create([
                     'booking_id' => $booking->id,
@@ -116,7 +117,7 @@ class BookingService
                 ]);
             }
 
-            // 9. Lưu sản phẩm đi kèm
+
             foreach ($products as $item) {
                 BookingProduct::create([
                     'booking_id' => $booking->id,
@@ -125,7 +126,7 @@ class BookingService
                 ]);
             }
 
-            // 10. Trả về booking + quan hệ đầy đủ FE cần
+
             return $booking->load([
                 'bookingSeats.seat',
                 'products.product',
@@ -133,5 +134,77 @@ class BookingService
                 'showtime.room.cinema'
             ]);
         });
+    }
+
+    /**
+     * ADMIN / STAFF – phân trang + filter booking
+     */
+    public function paginateBookings(array $filters = []): LengthAwarePaginator
+    {
+        $query = Booking::with([
+            'user',
+            'payments',
+            'ticket',
+            'bookingSeats.seat',
+            'showtime.movie',
+            'showtime.room.cinema',
+        ]);
+
+        // LỌC THEO MÃ ĐƠN VÉ ID
+        if (!empty($filters['booking_id'])) {
+            $query->where('id', $filters['booking_id']);
+        }
+
+        // LỌC THEO MÃ ĐƠN VÉ
+        if (!empty($filters['booking_code'])) {
+            $query->where('booking_code', 'like', '%' . $filters['booking_code'] . '%');
+        }
+
+        // LỌC THEO QR CODE
+        if (!empty($filters['qr_code'])) {
+            try {
+                $json = base64_decode($filters['qr_code'], true);
+                $data = json_decode($json, true);
+
+                if (is_array($data) && isset($data['booking_id'])) {
+                    $query->where('id', $data['booking_id']);
+                } else {
+                    $query->whereRaw('1 = 0');
+                }
+            } catch (\Throwable $e) {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        // LỌC THEO TÊN NGƯỜI DÙNG
+        if (!empty($filters['user_name'])) {
+            $query->whereHas('user', function ($q) use ($filters) {
+                $q->where('fullname', 'like', '%' . $filters['user_name'] . '%');
+            });
+        }
+
+        // LỌC THEO TRẠNG THÁI
+        if (!empty($filters['status'])) {
+            $query->where('booking_status', $filters['status']);
+        }
+
+        // SẮP XẾP
+        $sortBy    = $filters['sort_by'] ?? 'id';
+        $sortOrder = $filters['sort_order'] ?? 'desc';
+
+        // Chỉ cho phép sắp xếp theo các cột an toàn
+        $allowedSorts = ['id', 'created_at', 'final_amount'];
+
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'id';
+        }
+
+        // Chuẩn hóa sort order
+        $sortOrder = strtolower($sortOrder) === 'asc' ? 'asc' : 'desc';
+
+        // PHÂN TRANG
+        return $query
+            ->orderBy($sortBy, $sortOrder)
+            ->paginate($filters['per_page'] ?? 15);
     }
 }
