@@ -20,9 +20,7 @@ class BookingController extends Controller
         $this->service = $service;
     }
 
-    /**
-     * Tạo đơn đặt vé (CUSTOMER)
-     */
+
     public function store(BookingRequest $request)
     {
         try {
@@ -35,7 +33,10 @@ class BookingController extends Controller
                 ], 401);
             }
 
-            $booking = $this->service->createBooking($request->validated(), $user->id);
+            $booking = $this->service->createBooking(
+                $request->validated(),
+                $user->id
+            );
 
             return response()->json([
                 'success' => true,
@@ -51,9 +52,7 @@ class BookingController extends Controller
         }
     }
 
-    /**
-     * Chi tiết booking (CUSTOMER / STAFF / ADMIN)
-     */
+
     public function show(Request $request, $id)
     {
         $booking = Booking::with([
@@ -73,7 +72,7 @@ class BookingController extends Controller
             ], 404);
         }
 
-        // CUSTOMER chỉ xem được đơn của mình
+
         $user = $request->user();
         if ($user->role === 'customer' && $booking->user_id !== $user->id) {
             return response()->json([
@@ -89,9 +88,7 @@ class BookingController extends Controller
         ]);
     }
 
-    /**
-     * CUSTOMER xem danh sách booking của họ
-     */
+
     public function myBookings()
     {
         $userId = Auth::id();
@@ -116,64 +113,27 @@ class BookingController extends Controller
     }
 
     /**
-     * ADMIN / STAFF xem & lọc danh sách booking
+     * ADMIN / STAFF – danh sách booking (DÙNG SERVICE)
      */
     public function index(Request $request)
     {
-        $query = Booking::with([
-            'user',
-            'payments',
-            'ticket',
-            'bookingSeats.seat',
-            'showtime.movie',
-            'showtime.room.cinema'
+        $filters = $request->only([
+            'booking_id',
+            'booking_code',
+            'qr_code',
+            'user_name',
+            'status',
+            'per_page',
+            'sort_by',
+            'sort_order',
         ]);
 
-        // ===== FILTER =====
 
-        // 1. booking_id
-        if ($request->filled('booking_id')) {
-            $query->where('id', $request->booking_id);
-        }
+        $bookings = $this->service->paginateBookings($filters);
 
-        // 2. booking_code
-        if ($request->filled('booking_code')) {
-            $query->where('booking_code', 'like', '%' . $request->booking_code . '%');
-        }
-
-        // 3. QR code → decode → booking_id
-        if ($request->filled('qr_code')) {
-            $json = base64_decode($request->qr_code, true);
-            $data = json_decode($json, true);
-
-            if (is_array($data) && isset($data['booking_id'])) {
-                $query->where('id', $data['booking_id']);
-            } else {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'QR không hợp lệ hoặc không tìm thấy đơn vé',
-                ], 422);
-            }
-        }
-
-        // 4. user name
-        if ($request->filled('user_name')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('fullname', 'like', '%' . $request->user_name . '%');
-            });
-        }
-
-        // 5. booking status
-        if ($request->filled('status')) {
-            $query->where('booking_status', $request->status);
-        }
-
-        $bookings = $query->orderBy('id', 'desc')->paginate(15);
-
-        // ===== MESSAGE =====
         if ($bookings->isEmpty()) {
             $message = 'Không tìm thấy đơn vé phù hợp với điều kiện lọc';
-        } elseif ($request->query()) {
+        } elseif (!empty(array_filter($filters))) {
             $message = 'Danh sách đơn vé theo bộ lọc';
         } else {
             $message = 'Danh sách toàn bộ đơn vé';
@@ -182,7 +142,13 @@ class BookingController extends Controller
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data'    => BookingListResource::collection($bookings)
+            'data'    => BookingListResource::collection($bookings),
+            'meta'    => [
+                'current_page' => $bookings->currentPage(),
+                'last_page'    => $bookings->lastPage(),
+                'per_page'     => $bookings->perPage(),
+                'total'        => $bookings->total(),
+            ]
         ]);
     }
 }
