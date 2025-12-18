@@ -28,12 +28,9 @@ class DashboardController extends Controller
      * API: GET /api/dashboard
      *
      * Query params:
-     * - range (optional):
-     *   + today : thống kê hôm nay (mặc định)
-     *   + 7d    : thống kê 7 ngày gần nhất
-     *   + 30d   : thống kê 30 ngày gần nhất
-     *
-     * Frontend chỉ cần đổi range là có thể cập nhật toàn bộ dashboard.
+     * - range (optional): today | 7d | 30d
+     * - from_date (optional): YYYY-MM-DD
+     * - to_date   (optional): YYYY-MM-DD
      */
     public function index(Request $request)
     {
@@ -44,23 +41,32 @@ class DashboardController extends Controller
          */
         try {
             $validated = $request->validate([
+                // Preset có sẵn (như cũ)
                 'range' => 'nullable|in:today,7d,30d',
+
+                // Khoảng thời gian tùy chọn (theo góp ý của thầy)
+                'from_date' => 'nullable|date',
+                'to_date'   => 'nullable|date|after_or_equal:from_date',
             ]);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tham số range không hợp lệ. Chỉ chấp nhận: today, 7d, 30d.',
+                'message' => 'Tham số lọc dashboard không hợp lệ.',
                 'errors'  => $e->errors(),
             ], 422);
         }
 
         /**
          * ==========================
-         * 2. XÁC ĐỊNH KHOẢNG THỜI GIAN
+         * 2. LẤY THAM SỐ FILTER
          * ==========================
-         * Nếu FE không truyền range thì mặc định là "today"
          */
+        // Nếu FE không truyền range thì mặc định là today
         $range = $validated['range'] ?? 'today';
+
+        // Khoảng thời gian tùy chọn
+        $fromDate = $validated['from_date'] ?? null;
+        $toDate   = $validated['to_date'] ?? null;
 
         /**
          * ==========================
@@ -68,13 +74,16 @@ class DashboardController extends Controller
          * ==========================
          * Toàn bộ logic xử lý nằm trong DashboardService
          */
-        $dashboardData = $this->dashboardService->getDashboardData($range);
+        $dashboardData = $this->dashboardService->getDashboardData(
+            $range,
+            $fromDate,
+            $toDate
+        );
 
         /**
          * ==========================
          * 4. TRẢ RESPONSE CHO FRONTEND
          * ==========================
-         * Dữ liệu được format thông qua DashboardResource
          */
         return response()->json([
             'success' => true,

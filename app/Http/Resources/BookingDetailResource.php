@@ -84,11 +84,13 @@ class BookingDetailResource extends JsonResource
             'seats' => $this->bookingSeats
                 ? $this->bookingSeats->map(function ($item) {
                     $seat = $item->seat;
+
                     return [
                         'id'        => $seat?->id,
                         'seat_code' => $seat?->seat_code,
                         'type'      => $seat?->type,
-                        'price'     => $seat?->price,
+                        // LƯU GIÁ GHẾ TẠI THỜI ĐIỂM BOOKING
+                        'price' => (int) $item->price,
                     ];
                 })->values()
                 : [],

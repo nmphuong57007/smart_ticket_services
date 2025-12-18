@@ -109,11 +109,13 @@ class BookingService
 
             $this->seatService->holdSeats($seatIds);
 
-
-            foreach ($seatIds as $seatId) {
+            foreach ($seats as $seat) {
                 BookingSeat::create([
                     'booking_id' => $booking->id,
-                    'seat_id'    => $seatId,
+                    'seat_id'    => $seat->id,
+
+                    // LƯU GIÁ GHẾ TẠI THỜI ĐIỂM BOOKING
+                    'price'      => $seat->price,
                 ]);
             }
 

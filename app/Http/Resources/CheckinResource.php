@@ -16,6 +16,7 @@ class CheckinResource extends JsonResource
                 'seat_id'   => $bs->seat_id,
                 'seat_code' => optional($bs->seat)->seat_code ?? optional($bs->seat)->code ?? null,
                 'type'      => optional($bs->seat)->type ?? null,
+                'price' => (int) $bs->price,
             ];
         })->values();
 
@@ -37,8 +38,8 @@ class CheckinResource extends JsonResource
                 // GIỜ VIỆT NAM
                 'checked_in_at' => $ticket->checked_in_at
                     ? $ticket->checked_in_at
-                        ->timezone('Asia/Ho_Chi_Minh')
-                        ->format('Y-m-d H:i:s')
+                    ->timezone('Asia/Ho_Chi_Minh')
+                    ->format('Y-m-d H:i:s')
                     : null,
 
                 'checked_in_by' => $ticket->checked_in_by,
@@ -54,8 +55,8 @@ class CheckinResource extends JsonResource
                 // GIỜ VIỆT NAM
                 'created_at' => $booking->created_at
                     ? $booking->created_at
-                        ->timezone('Asia/Ho_Chi_Minh')
-                        ->format('Y-m-d H:i:s')
+                    ->timezone('Asia/Ho_Chi_Minh')
+                    ->format('Y-m-d H:i:s')
                     : null,
             ],
 

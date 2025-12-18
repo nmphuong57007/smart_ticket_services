@@ -58,10 +58,17 @@ class ShowtimeService
 
         $buffer = 10; // phút nghỉ giữa hai suất chiếu
 
+        // Lấy thông tin phim
         $movie = Movie::findOrFail($data['movie_id']);
+
+        // Lấy độ dài phim
         $duration = $movie->duration ?? 120;
 
+        // Tính thời gian bắt đầu suất chiếu mới
         $newStart = Carbon::parse("{$data['show_date']} {$data['show_time']}");
+
+        // Tính thời gian kết thúc suất chiếu mới
+        $newEnd = (clone $newStart)->addMinutes($duration);
 
         // Giờ mở cửa / đóng cửa
         $openTime  = Carbon::parse("{$data['show_date']} 08:00");
@@ -69,6 +76,12 @@ class ShowtimeService
 
         if ($newStart->lt($openTime)) {
             return ["error" => "Suất chiếu phải bắt đầu sau 08:00"];
+        }
+
+        if ($newEnd->gt($closeTime)) {
+            return [
+                "error" => "Suất chiếu phải kết thúc trước 24:00"
+            ];
         }
 
         // Lấy các suất chiếu khác trong ngày của phòng
@@ -144,7 +157,6 @@ class ShowtimeService
             $conflict = $this->checkOverlapDetail($data);
             if ($conflict) {
                 throw new \Exception(json_encode([
-                    "message"  => "Lịch chiếu trùng thời gian trong phòng này!",
                     "conflict" => $conflict
                 ]));
             }
@@ -179,10 +191,11 @@ class ShowtimeService
 
         $conflict = $this->checkOverlapDetail($checkData, $id);
         if ($conflict) {
-            throw new \Exception(json_encode([
-                "message"  => "Lịch chiếu trùng thời gian trong phòng này!",
-                "conflict" => $conflict
-            ]));
+            if ($conflict) {
+                throw new \Exception(json_encode([
+                    "conflict" => $conflict
+                ]));
+            }
         }
 
         // Nếu đổi ngày → tính lại giá
