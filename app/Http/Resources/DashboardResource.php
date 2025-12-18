@@ -23,23 +23,11 @@ class DashboardResource extends JsonResource
              * ==========================
              * 1. SUMMARY – CÁC Ô THỐNG KÊ TRÊN CÙNG
              * ==========================
-             * Dùng để hiển thị:
-             * - Doanh thu
-             * - Vé đã bán
-             * - Suất chiếu
-             * - Phim đang chiếu
              */
             'summary' => [
-                // Tổng doanh thu (chỉ tính booking đã thanh toán)
-                'total_revenue' => (float) $this['summary']['total_revenue'],
-
-                // Tổng số vé đã bán (số ghế đã booked)
-                'total_tickets' => (int) $this['summary']['total_tickets'],
-
-                // Tổng số suất chiếu trong khoảng thời gian được chọn
-                'total_showtimes' => (int) $this['summary']['total_showtimes'],
-
-                // Tổng số phim đang chiếu
+                'total_revenue'        => (float) $this['summary']['total_revenue'],
+                'total_tickets'        => (int) $this['summary']['total_tickets'],
+                'total_showtimes'      => (int) $this['summary']['total_showtimes'],
                 'total_movies_showing' => (int) $this['summary']['total_movies_showing'],
             ],
 
@@ -47,16 +35,10 @@ class DashboardResource extends JsonResource
              * ==========================
              * 2. CHART – BIỂU ĐỒ DOANH THU
              * ==========================
-             * FE dùng để vẽ line chart / bar chart
-             * - Trục X: date
-             * - Trục Y: revenue
              */
             'chart' => $this['chart']->map(function ($item) {
                 return [
-                    // Ngày (YYYY-MM-DD)
-                    'date' => $item->date,
-
-                    // Doanh thu của ngày đó
+                    'date'    => $item->date,
                     'revenue' => (float) $item->revenue,
                 ];
             }),
@@ -65,36 +47,18 @@ class DashboardResource extends JsonResource
              * ==========================
              * 3. LATEST BOOKINGS – ĐƠN VÉ MỚI NHẤT
              * ==========================
-             * Dùng để hiển thị bảng "Đơn vé mới nhất"
              */
             'latest_bookings' => $this['latest_bookings']->map(function ($booking) {
                 return [
-                    // ID booking (dùng khi cần click xem chi tiết)
-                    'id' => $booking->id,
-
-                    // Mã đơn vé
-                    'booking_code' => $booking->booking_code,
-
-                    // Tên khách hàng
-                    'customer_name' => optional($booking->user)->fullname,
-
-                    // Tên phim
-                    'movie' => optional($booking->showtime->movie)->title,
-
-                    // Tên phòng chiếu
-                    'room' => optional($booking->showtime->room)->name,
-
-                    // Tổng tiền đơn vé
-                    'total_amount' => (float) $booking->final_amount,
-
-                    // Trạng thái thanh toán: paid | pending | failed | refunded
+                    'id'             => $booking->id,
+                    'booking_code'   => $booking->booking_code,
+                    'customer_name'  => optional($booking->user)->fullname,
+                    'movie'          => optional($booking->showtime->movie)->title,
+                    'room'           => optional($booking->showtime->room)->name,
+                    'total_amount'   => (float) $booking->final_amount,
                     'payment_status' => $booking->payment_status,
-
-                    // Trạng thái booking: pending | paid | canceled | expired
                     'booking_status' => $booking->booking_status,
-
-                    // Thời gian tạo đơn (format sẵn cho FE)
-                    'created_at' => optional($booking->created_at)->format('Y-m-d H:i'),
+                    'created_at'     => optional($booking->created_at)->format('Y-m-d H:i'),
                 ];
             }),
 
@@ -102,47 +66,50 @@ class DashboardResource extends JsonResource
              * ==========================
              * 4. UPCOMING SHOWTIMES – SUẤT CHIẾU SẮP DIỄN RA
              * ==========================
-             * Dùng để hiển thị bảng suất chiếu bên dưới dashboard
              */
             'upcoming_showtimes' => collect($this['upcoming_showtimes'])->map(function ($showtime) {
 
-                // Tính % lấp đầy (đã làm sẵn để FE không phải tính)
                 $percent = $showtime['capacity'] > 0
                     ? round(($showtime['sold'] / $showtime['capacity']) * 100)
                     : 0;
 
                 return [
-                    // Tên phim
-                    'movie' => $showtime['movie'],
-
-                    // Ngày chiếu
-                    'date' => $showtime['date'],
-
-                    // Giờ chiếu
-                    'time' => $showtime['time'],
-
-                    // Phòng chiếu
-                    'room' => $showtime['room'],
-
-                    // Số vé đã bán
-                    'sold' => (int) $showtime['sold'],
-
-                    // Tổng số ghế
+                    'movie'    => $showtime['movie'],
+                    'date'     => $showtime['date'],
+                    'time'     => $showtime['time'],
+                    'room'     => $showtime['room'],
+                    'sold'     => (int) $showtime['sold'],
                     'capacity' => (int) $showtime['capacity'],
-
-                    // Phần trăm lấp đầy (dùng cho progress bar)
-                    'percent' => $percent,
+                    'percent'  => $percent,
                 ];
             }),
 
             /**
              * ==========================
-             * 5. META – THÔNG TIN BỘ LỌC
+             * 5. MOVIES STATISTICS – THỐNG KÊ THEO TỪNG PHIM 
              * ==========================
-             * FE dùng để biết dashboard đang ở:
-             * - Hôm nay
-             * - 7 ngày
-             * - 30 ngày
+             * Dùng để biết phim nào:
+             * - Bán chạy
+             * - Ít người xem
+             * - Hiệu quả / không hiệu quả
+             */
+            'movies_statistics' => collect($this['movies_statistics'])->map(function ($movie) {
+                return [
+                    'movie_id'        => $movie['movie_id'],
+                    'movie'           => $movie['movie'],
+                    'total_showtimes' => (int) $movie['total_showtimes'],
+                    'total_seats'     => (int) $movie['total_seats'],
+                    'sold_tickets'    => (int) $movie['sold_tickets'],
+                    'empty_seats'     => (int) $movie['empty_seats'],
+                    'revenue'         => (float) $movie['revenue'],
+                    'fill_percent'    => (int) $movie['fill_percent'],
+                ];
+            }),
+
+            /**
+             * ==========================
+             * 6. META – THÔNG TIN BỘ LỌC
+             * ==========================
              */
             'meta' => $this['meta'],
         ];

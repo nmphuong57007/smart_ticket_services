@@ -89,18 +89,28 @@ class ShowtimeController extends Controller
      */
     private function decodeException(\Exception $e)
     {
-        $msg = json_decode($e->getMessage(), true);
+        $payload = json_decode($e->getMessage(), true);
 
-        if (!is_array($msg)) {
+        // Nếu service throw JSON có conflict
+        if (is_array($payload) && isset($payload['conflict'])) {
+
+            $conflict = $payload['conflict'];
+
+            // Ưu tiên message từ conflict.error nếu có
+            $message = is_array($conflict) && isset($conflict['error'])
+                ? $conflict['error']
+                : 'Lịch chiếu trùng thời gian trong phòng này!';
+
             return [
-                'message'  => $e->getMessage(),
-                'conflict' => null
+                'message'  => $message,
+                'conflict' => $conflict
             ];
         }
 
+        // Exception thường
         return [
-            'message'  => $msg['message'] ?? $e->getMessage(),
-            'conflict' => $msg['conflict'] ?? null
+            'message'  => $e->getMessage(),
+            'conflict' => null
         ];
     }
 
