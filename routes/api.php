@@ -287,6 +287,9 @@ Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
 
 Route::prefix('reviews')->group(function () {
 
+    // PUBLIC
+    Route::get('/{id}', [ReviewController::class, 'reviewsByMovie']);
+
     // USER
     Route::middleware(['api.auth', 'role:customer'])->group(function () {
         Route::post('/', [ReviewController::class, 'store']);

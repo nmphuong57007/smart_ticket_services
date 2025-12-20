@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Review;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,23 @@ class ReviewController extends Controller
             'comment'  => 'nullable|string',
         ]);
 
+        /* =========================
+            CHECK ĐÃ ĐẶT VÉ CHƯA
+        ========================= */
+        $hasBooking = Booking::where('user_id', $user->id)
+            ->where('booking_status', 'paid')
+            ->whereHas('showtime', function ($q) use ($request) {
+                $q->where('movie_id', $request->movie_id);
+            })
+            ->exists();
+
+        if (!$hasBooking) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn cần đặt vé và xem phim này trước khi review.',
+            ], 403);
+        }
+
         // Không cho review trùng phim
         if (
             Review::where('user_id', $user->id)
@@ -53,7 +71,7 @@ class ReviewController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Gửi review thành công.',
+            'message' => 'Gửi review thành công, chờ admin duyệt.',
             'data'    => $review,
         ]);
     }
@@ -106,6 +124,21 @@ class ReviewController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Xóa review thành công.',
+        ]);
+    }
+
+    // Lấy review theo movie
+    public function reviewsByMovie($movieId)
+    {
+        $reviews = Review::with('user:id,fullname,avatar')
+            ->where('movie_id', $movieId)
+            ->where('status', 'approved')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $reviews,
         ]);
     }
 
