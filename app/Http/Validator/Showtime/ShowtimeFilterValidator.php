@@ -13,6 +13,8 @@ class ShowtimeFilterValidator extends BaseValidator
             // Không còn cinema_id nữa!
 
             'room_id'     => 'sometimes|nullable|integer|exists:rooms,id',
+            'room_name' => 'sometimes|nullable|string|max:255',
+
             'movie_id'    => 'sometimes|nullable|integer|exists:movies,id',
 
             'show_date'   => 'sometimes|nullable|date_format:Y-m-d',
@@ -34,6 +36,10 @@ class ShowtimeFilterValidator extends BaseValidator
 
             'room_id.integer'   => 'ID phòng phải là số nguyên',
             'room_id.exists'    => 'Phòng không tồn tại',
+
+            'room_name.string' => 'Tên phòng phải là chuỗi ký tự',
+            'room_name.max'    => 'Tên phòng tối đa 255 ký tự',
+
 
             'movie_id.integer'  => 'ID phim phải là số nguyên',
             'movie_id.exists'   => 'Phim không tồn tại',

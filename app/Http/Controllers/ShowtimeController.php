@@ -38,6 +38,7 @@ class ShowtimeController extends Controller
 
         $filters = $request->only([
             'room_id',
+            'room_name',
             'movie_id',
             'show_date',
             'from_date',
