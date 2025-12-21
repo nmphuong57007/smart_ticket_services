@@ -29,9 +29,19 @@ class ShowtimeService
             'movie:id,title,poster,release_date,duration,language,format',
             'room:id,name',
         ])
+            // lọc theo ID phòng
             ->when($filters['room_id'] ?? null, fn($q, $v) => $q->where('room_id', $v))
+            // lọc theo tên phòng
+            ->when($filters['room_name'] ?? null, function ($q, $v) {
+                $q->whereHas('room', function ($roomQuery) use ($v) {
+                    $roomQuery->where('name', 'like', '%' . $v . '%');
+                });
+            })
+            // lọc theo ID phim
             ->when($filters['movie_id'] ?? null, fn($q, $v) => $q->where('movie_id', $v))
+            // lọc theo tên phim
             ->when($filters['show_date'] ?? null, fn($q, $v) => $q->where('show_date', $v))
+            // lọc theo khoảng ngày
             ->when($filters['from_date'] ?? null, fn($q, $v) => $q->whereDate('show_date', '>=', $v))
             ->when($filters['to_date'] ?? null, fn($q, $v) => $q->whereDate('show_date', '<=', $v))
             ->orderBy($filters['sort_by'] ?? 'show_date', $filters['sort_order'] ?? 'asc')
