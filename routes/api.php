@@ -27,6 +27,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ChatbotController;
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReviewController;
 
 Route::get(
     '/health-check',
@@ -282,4 +283,24 @@ Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
 Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
+Route::prefix('reviews')->group(function () {
+    // ADMIN
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::get('/admin', [ReviewController::class, 'adminIndex']);
+        Route::put('/admin/{id}/approve', [ReviewController::class, 'approve']);
+        Route::put('/admin/{id}/reject', [ReviewController::class, 'reject']);
+        Route::delete('/admin/{id}', [ReviewController::class, 'adminDestroy']);
+    });
+
+    // USER
+    Route::middleware(['api.auth', 'role:customer'])->group(function () {
+        Route::post('/', [ReviewController::class, 'store']);
+        Route::put('/{id}', [ReviewController::class, 'update']);
+        Route::delete('/{id}', [ReviewController::class, 'destroy']);
+    });
+
+    // PUBLIC
+    Route::get('/{id}', [ReviewController::class, 'reviewsByMovie']);
 });
