@@ -286,9 +286,13 @@ Route::middleware(['api.auth', 'role:staff,admin'])->group(function () {
 });
 
 Route::prefix('reviews')->group(function () {
-
-    // PUBLIC
-    Route::get('/{id}', [ReviewController::class, 'reviewsByMovie']);
+    // ADMIN
+    Route::middleware(['api.auth', 'role:admin'])->group(function () {
+        Route::get('/admin', [ReviewController::class, 'adminIndex']);
+        Route::put('/admin/{id}/approve', [ReviewController::class, 'approve']);
+        Route::put('/admin/{id}/reject', [ReviewController::class, 'reject']);
+        Route::delete('/admin/{id}', [ReviewController::class, 'adminDestroy']);
+    });
 
     // USER
     Route::middleware(['api.auth', 'role:customer'])->group(function () {
@@ -297,11 +301,6 @@ Route::prefix('reviews')->group(function () {
         Route::delete('/{id}', [ReviewController::class, 'destroy']);
     });
 
-    // ADMIN
-    Route::middleware(['api.auth', 'role:admin'])->group(function () {
-        Route::get('/admin', [ReviewController::class, 'adminIndex']);
-        Route::put('/admin/{id}/approve', [ReviewController::class, 'approve']);
-        Route::put('/admin/{id}/reject', [ReviewController::class, 'reject']);
-        Route::delete('/admin/{id}', [ReviewController::class, 'adminDestroy']);
-    });
+    // PUBLIC
+    Route::get('/{id}', [ReviewController::class, 'reviewsByMovie']);
 });
