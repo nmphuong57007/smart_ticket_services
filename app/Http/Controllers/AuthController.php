@@ -147,6 +147,14 @@ class AuthController extends Controller
             $user = $request->user();
             $userData = $this->authService->getUserProfile($user);
 
+            if (!empty($userData['avatar'])) {
+                if (!str_starts_with($userData['avatar'], 'http')) {
+                    $userData['avatar'] = asset('storage/' . $userData['avatar']);
+                }
+            } else {
+                $userData['avatar'] = null;
+            }
+
             return response([
                 'success' => true,
                 'message' => 'Lấy thông tin tài khoản thành công',
