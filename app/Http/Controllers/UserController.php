@@ -53,11 +53,24 @@ class UserController extends Controller
             $filters = $request->only(['search', 'role', 'status', 'sort_by', 'sort_order', 'per_page']);
             $users = $this->userService->getUsers($filters);
 
+            $usersData = collect($users->items())->map(function ($user) {
+
+                if (!$user->avatar) {
+                    $user->avatar = null;
+                } elseif (!str_starts_with($user->avatar, 'http')) {
+                    // Avatar upload (path)
+                    $user->avatar = asset('storage/' . $user->avatar);
+                }
+                // else: avatar seed (URL) → giữ nguyên
+
+                return $user;
+            });
+
             return response([
                 'success' => true,
                 'message' => 'Lấy danh sách người dùng thành công',
                 'data' => [
-                    'users' => $users->items(),
+                    'users' => $usersData,
                     'pagination' => [
                         'current_page' => $users->currentPage(),
                         'last_page' => $users->lastPage(),
@@ -122,6 +135,14 @@ class UserController extends Controller
             }
 
             $user = $this->userService->findUserById($id);
+
+            if (!$user->avatar) {
+                $user->avatar = null;
+            } elseif (!str_starts_with($user->avatar, 'http')) {
+                // Avatar upload
+                $user->avatar = asset('storage/' . $user->avatar);
+            }
+            // else: avatar seed → giữ nguyên
 
             return response([
                 'success' => true,

@@ -55,7 +55,6 @@ class AuthController extends Controller
                 'message' => 'Đăng ký tài khoản thành công',
                 'data' => $result
             ], 201);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -87,12 +86,22 @@ class AuthController extends Controller
 
             $result = $this->authService->login($credentials);
 
+            if (isset($result['user']) && is_array($result['user'])) {
+
+                if (empty($result['user']['avatar'])) {
+                    $result['user']['avatar'] = null;
+                } elseif (!str_starts_with($result['user']['avatar'], 'http')) {
+                    // avatar lưu dạng path: avatars/xxx.jpg
+                    $result['user']['avatar'] = asset('storage/' . $result['user']['avatar']);
+                }
+                // nếu đã là URL (seed) thì giữ nguyên
+            }
+
             return response([
                 'success' => true,
                 'message' => 'Đăng nhập thành công',
                 'data' => $result
             ], 200);
-
         } catch (ValidationException $e) {
             return response([
                 'success' => false,
@@ -120,7 +129,6 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Đăng xuất thành công'
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -146,7 +154,6 @@ class AuthController extends Controller
                     'user' => $userData
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -171,7 +178,6 @@ class AuthController extends Controller
                 'message' => 'Lấy danh sách phiên đăng nhập thành công',
                 'data' => $sessionData
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -212,7 +218,6 @@ class AuthController extends Controller
                     'message' => 'Không tìm thấy phiên hoặc đã bị huỷ'
                 ], 404);
             }
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -237,7 +242,6 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => "Đã đăng xuất khỏi {$deleted} thiết bị khác thành công"
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
@@ -260,7 +264,6 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'Huỷ tất cả phiên đăng nhập thành công'
             ], 200);
-
         } catch (\Exception $e) {
             return response([
                 'success' => false,
