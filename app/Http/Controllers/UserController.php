@@ -241,7 +241,7 @@ class UserController extends Controller
                 ], 422);
             }
 
-            // ✅ Xử lý upload avatar (nếu có)
+            // Xử lý upload avatar (nếu có)
             if ($request->hasFile('avatar')) {
                 $file = $request->file('avatar');
                 $filename = time() . '_' . $file->getClientOriginalName();
@@ -256,15 +256,23 @@ class UserController extends Controller
                 $user->avatar = $path;
             }
 
-            // ✅ Update các thông tin khác
+            // Update các thông tin khác
             $user->fill($request->only(['fullname', 'email', 'phone', 'address', 'gender']));
             $user->save();
+
+            // Lấy dữ liệu mới nhất
+            $user = $user->fresh();
+
+            // BUILD FULL URL cho avatar
+            $user->avatar = $user->avatar
+                ? asset('storage/' . $user->avatar)
+                : null;
 
             return response([
                 'success' => true,
                 'message' => 'Cập nhật thông tin cá nhân thành công',
                 'data' => [
-                    'user' => $user->fresh()
+                    'user' => $user
                 ]
             ], 200);
         } catch (\Exception $e) {
